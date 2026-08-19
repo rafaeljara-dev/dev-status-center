@@ -18,3 +18,5 @@ artifacts/
 *.secrets.json
 providers.local.json
 
+design/tray/__pycache__/
+design/tray/icono-bandeja-dev-status.html
