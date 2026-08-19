@@ -25,7 +25,9 @@ Este repositorio implementa **MVP 0** como una vertical funcional:
 - opción **Start with Windows** mediante la clave Run del usuario actual;
 - pruebas unitarias e integración y CI para Windows.
 
-Los providers reales de Vercel, Neon y Cloudflare todavía están deliberadamente desactivados. La arquitectura, transporte y secret store están listos para implementarlos después de proporcionar credenciales de solo lectura. No se incluyen endpoints inventados ni scraping frágil.
+**Neon** ya está implementado (consumo oficial + costo calculado desde tarifas de lista,
+marcado como estimación) y a la espera de verificarse contra la API real con un token. Vercel y
+Cloudflare siguen deliberadamente desactivados. La arquitectura, transporte y secret store están listos para implementarlos después de proporcionar credenciales de solo lectura. No se incluyen endpoints inventados ni scraping frágil.
 
 ## Inicio rápido en Windows
 

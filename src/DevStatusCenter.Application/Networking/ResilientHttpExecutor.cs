@@ -1,7 +1,7 @@
 using System.Net;
 using DevStatusCenter.Application.Providers;
 
-namespace DevStatusCenter.Infrastructure.Networking;
+namespace DevStatusCenter.Application.Networking;
 
 public sealed class ResilientHttpExecutor(
     HttpClient httpClient,

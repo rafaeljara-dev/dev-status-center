@@ -3,6 +3,7 @@ using DevStatusCenter.Application.Abstractions;
 using DevStatusCenter.Application.Configuration;
 using DevStatusCenter.Application.Dashboard;
 using DevStatusCenter.Application.Forecast;
+using DevStatusCenter.Application.Networking;
 using DevStatusCenter.Application.Power;
 using DevStatusCenter.Application.Providers;
 using DevStatusCenter.Application.Scheduling;
@@ -14,6 +15,7 @@ using DevStatusCenter.Infrastructure.Persistence;
 using DevStatusCenter.Infrastructure.Security;
 using DevStatusCenter.Infrastructure.Windows;
 using DevStatusCenter.Providers.Mock;
+using DevStatusCenter.Providers.Neon;
 using DevStatusCenter.Desktop.Tray;
 using DevStatusCenter.Desktop.ViewModels;
 using DevStatusCenter.Desktop.Views;
@@ -25,6 +27,7 @@ public partial class App : System.Windows.Application, IDisposable
 {
     private SingleInstanceGuard? _singleInstance;
     private SqliteConnectionFactory? _connectionFactory;
+    private SharedHttpTransport? _httpTransport;
     private RefreshScheduler? _scheduler;
     private TrayIconService? _tray;
     private DashboardWindow? _dashboardWindow;
@@ -69,7 +72,13 @@ public partial class App : System.Windows.Application, IDisposable
             await SeedDemoReferenceDataAsync(store, options.DisplayCurrency);
             await SeedQuickAccessAsync(store);
 
-            var providers = await BuildProvidersAsync(options, secrets);
+            // Un solo SocketsHttpHandler para todos los providers: reutiliza conexiones y evita
+            // el agotamiento de puertos que produce crear HttpClient por petición.
+            var transport = new SharedHttpTransport();
+            _httpTransport = transport;
+            var http = new ResilientHttpExecutor(transport.Client, TimeProvider.System);
+
+            var providers = await BuildProvidersAsync(options, secrets, http);
             _scheduler = new RefreshScheduler(
                 providers,
                 store,
@@ -187,6 +196,7 @@ public partial class App : System.Windows.Application, IDisposable
             _scheduler.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
+        _httpTransport?.Dispose();
         _connectionFactory?.Dispose();
         _singleInstance?.Dispose();
         GC.SuppressFinalize(this);
@@ -207,7 +217,8 @@ public partial class App : System.Windows.Application, IDisposable
     /// </summary>
     private static async Task<IReadOnlyList<IProvider>> BuildProvidersAsync(
         AppOptions options,
-        ISecretStore secrets)
+        ISecretStore secrets,
+        ResilientHttpExecutor http)
     {
         var providers = new List<IProvider>(options.Providers.Count);
 
@@ -216,10 +227,15 @@ public partial class App : System.Windows.Application, IDisposable
             providers.Add(new MockProvider());
         }
 
-        // Los providers reales se registran aqui conforme se implementen. El patron queda fijado:
-        //   if (await HasCredentialAsync(options, secrets, "neon"))
-        //       providers.Add(new NeonProvider(transport, secrets, options.For("neon")));
-        _ = await HasCredentialAsync(options, secrets, "neon");
+        if (await HasCredentialAsync(options, secrets, NeonProvider.ProviderId))
+        {
+            var neon = options.For(NeonProvider.ProviderId);
+            providers.Add(new NeonProvider(
+                http,
+                secrets,
+                new NeonProviderOptions(neon.CredentialReference!, neon.AccountId),
+                TimeProvider.System));
+        }
 
         // Sin ningun provider habilitado el scheduler seguiria vivo pero nunca refrescaria, y el
         // popup se veria vacio sin explicacion. El de demostracion mantiene el pipeline visible.

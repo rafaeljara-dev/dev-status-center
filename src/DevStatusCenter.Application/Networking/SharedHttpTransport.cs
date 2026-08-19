@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace DevStatusCenter.Infrastructure.Networking;
+namespace DevStatusCenter.Application.Networking;
 
 public sealed class SharedHttpTransport : IDisposable
 {

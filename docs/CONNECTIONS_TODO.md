@@ -26,11 +26,31 @@ Los cambios de provider se aplican al reiniciar la aplicación.
 
 | Provider | Referencia sugerida | Información por definir | Estado |
 |---|---|---|---|
-| Neon | `neon-personal` | API token read-only, account/org ID si aplica | Pendiente |
+| Neon | `neon-personal` | API key de Neon; Account ID = `org_id` (se descubre solo si se deja vacío) | **Implementado, sin verificar contra la API real** |
 | Vercel | `vercel-personal` | token, team ID opcional | Pendiente |
 | Cloudflare | `cloudflare-personal` | API token read-only, account ID | Pendiente |
 | OpenAI | `openai-personal` | admin/usage credential compatible con endpoints vigentes | Futuro |
 | Anthropic | `anthropic-personal` | usage/billing access vigente | Futuro |
+
+## Neon: qué falta para darlo por bueno
+
+El provider está escrito contra la referencia pública de la Neon API v2 (19-ago-2026) y sus
+pruebas fijan parsing, conversión de unidades, cálculo de costo y clasificación de errores con
+fixtures. Lo que **no** pueden probar es que Neon devuelva exactamente esa forma. Con un token
+real hay que confirmar, en este orden:
+
+1. `GET /users/me/organizations` devuelve al menos una organización y su `plan`.
+2. `GET /projects?org_id=…` lista los proyectos esperados y la paginación termina.
+3. `GET /consumption_history/v2/projects` acepta los ocho `metrics` que se piden y devuelve
+   `periods[].consumption[].metrics[]` con esos nombres.
+4. Los nombres de métrica coinciden literalmente con
+   `NeonBillableUnits.RequestedMetrics`. Si Neon renombra uno, esa métrica se leerá como cero
+   **en silencio**: es el fallo más probable y el más difícil de notar.
+5. El importe calculado se parece al del panel de Neon. Si no, revisa el plan y la tarifa: el
+   costo es un cálculo nuestro, no una factura.
+
+Permisos: la API key de Neon no tiene scopes granulares hoy, así que da acceso de escritura.
+Crea una key dedicada a esta aplicación para poder revocarla sin afectar nada más.
 
 ## Configuración versionable
 

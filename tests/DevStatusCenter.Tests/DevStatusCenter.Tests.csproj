@@ -34,5 +34,6 @@
     <ProjectReference Include="../../src/DevStatusCenter.Application/DevStatusCenter.Application.csproj" />
     <ProjectReference Include="../../src/DevStatusCenter.Infrastructure/DevStatusCenter.Infrastructure.csproj" />
     <ProjectReference Include="../../src/DevStatusCenter.Providers.Mock/DevStatusCenter.Providers.Mock.csproj" />
+    <ProjectReference Include="../../src/DevStatusCenter.Providers.Neon/DevStatusCenter.Providers.Neon.csproj" />
   </ItemGroup>
 </Project>
