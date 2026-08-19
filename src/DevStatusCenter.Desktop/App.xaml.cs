@@ -164,6 +164,7 @@ public partial class App : System.Windows.Application, IDisposable
             // porque le estorba no deberia volver a apagarlo en el siguiente arranque.
             var glassEnabled = await ReadGlassPreferenceAsync(settings);
             _dashboardWindow.SetGlass(glassEnabled);
+            var trayMotion = await ReadTrayMotionAsync(settings);
 
             void ExitApplication()
             {
@@ -188,10 +189,17 @@ public partial class App : System.Windows.Application, IDisposable
                         enabled ? "true" : "false",
                         CancellationToken.None);
                 },
+                trayMotion,
+                level => _ = settings.SetAsync("ui.trayMotion", level.ToString(), CancellationToken.None),
                 ExitApplication);
 
             _scheduler.SnapshotChanged += (_, _) =>
                 _ = Dispatcher.InvokeAsync(() => _ = ReloadDashboardAsync(viewModel, store, _tray));
+
+            // El scheduler avisa desde su propio hilo; NotifyIcon solo se puede tocar desde el
+            // de la UI, asi que el salto de hilo se hace aqui y no dentro del icono.
+            _scheduler.RefreshActivityChanged += (_, refreshing) =>
+                _ = Dispatcher.InvokeAsync(() => _tray?.SetSyncing(refreshing));
             await _scheduler.StartAsync(CancellationToken.None);
 
             // La pestana recordada se restaura antes del primer LoadAsync: si el snapshot trae una
@@ -301,6 +309,14 @@ public partial class App : System.Windows.Application, IDisposable
         _connectionFactory?.Dispose();
         _singleInstance?.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    private static async Task<TrayMotion> ReadTrayMotionAsync(SqliteSettingsStore settings)
+    {
+        var saved = await settings.GetAsync("ui.trayMotion", CancellationToken.None);
+        return Enum.TryParse<TrayMotion>(saved, ignoreCase: true, out var motion)
+            ? motion
+            : TrayMotion.Full;
     }
 
     private static async Task<bool> ReadGlassPreferenceAsync(SqliteSettingsStore settings)

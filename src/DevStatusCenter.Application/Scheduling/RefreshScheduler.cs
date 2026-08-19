@@ -77,6 +77,13 @@ public sealed class RefreshScheduler : IAsyncDisposable
 
     public event EventHandler? SnapshotChanged;
 
+    /// <summary>
+    /// Se dispara con <c>true</c> al empezar un ciclo de consultas y con <c>false</c> al acabar.
+    /// La UI lo usa para mostrar actividad; se emite desde el hilo del scheduler, asi que quien
+    /// escuche tiene que llevarlo a su propio hilo.
+    /// </summary>
+    public event EventHandler<bool>? RefreshActivityChanged;
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -285,17 +292,27 @@ public sealed class RefreshScheduler : IAsyncDisposable
         bool isManual,
         CancellationToken lifetimeToken)
     {
-        using var cycleCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
-        Interlocked.Exchange(ref _activeRefreshCts, cycleCts)?.Dispose();
-
+        RefreshActivityChanged?.Invoke(this, true);
         try
         {
-            await Task.WhenAll(providers.Select(provider =>
-                RefreshOneAsync(provider, isManual, cycleCts.Token)));
+            using var cycleCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
+            Interlocked.Exchange(ref _activeRefreshCts, cycleCts)?.Dispose();
+
+            try
+            {
+                await Task.WhenAll(providers.Select(provider =>
+                    RefreshOneAsync(provider, isManual, cycleCts.Token)));
+            }
+            finally
+            {
+                Interlocked.CompareExchange(ref _activeRefreshCts, null, cycleCts);
+            }
         }
         finally
         {
-            Interlocked.CompareExchange(ref _activeRefreshCts, null, cycleCts);
+            // En finally y no despues del await: si el ciclo se cancela al salir, el aviso de
+            // "ya termine" tiene que llegar igual o la UI se queda animando para siempre.
+            RefreshActivityChanged?.Invoke(this, false);
         }
     }
 

@@ -1,4 +1,4 @@
-using System.Drawing;
+using System.Globalization;
 using System.Runtime.Versioning;
 using DevStatusCenter.Application.Abstractions;
 using DevStatusCenter.Application.Dashboard;
@@ -14,6 +14,15 @@ namespace DevStatusCenter.Desktop.Tray;
 [SupportedOSPlatform("windows")]
 public sealed class TrayIconService : IDisposable, INotifier
 {
+    /// <summary>Ventana de aviso de pago: la misma que usa el evaluador de alertas.</summary>
+    private static readonly TimeSpan PaymentHorizon = TimeSpan.FromDays(3);
+
+    /// <summary>
+    /// Un fallo aislado se recupera solo en el siguiente ciclo; poner cara de muerto por eso
+    /// seria alarmismo. Tres seguidos es el mismo umbral con el que ya se notifica.
+    /// </summary>
+    private const int FailuresBeforeSadFace = 3;
+
     private readonly DashboardWindow _window;
     private readonly DashboardViewModel _viewModel;
     private readonly PowerManager _powerManager;
@@ -26,8 +35,9 @@ public sealed class TrayIconService : IDisposable, INotifier
     private readonly Forms.NotifyIcon _notifyIcon;
     private readonly Forms.ContextMenuStrip _menu;
     private readonly Forms.ToolStripMenuItem _quickAccessMenu;
-    private Icon? _currentIcon;
-    private decimal _budgetPercent;
+    private readonly TrayAnimator _animator;
+    private readonly Action<TrayMotion> _saveMotion;
+    private string? _lastSignature;
     private bool _disposed;
 
     public TrayIconService(
@@ -40,6 +50,8 @@ public sealed class TrayIconService : IDisposable, INotifier
         Action manageProviders,
         bool glassEnabled,
         Action<bool> setGlass,
+        TrayMotion motion,
+        Action<TrayMotion> saveMotion,
         Action exit)
     {
         _window = window;
@@ -50,6 +62,7 @@ public sealed class TrayIconService : IDisposable, INotifier
         _manageQuickAccess = manageQuickAccess;
         _manageProviders = manageProviders;
         _setGlass = setGlass;
+        _saveMotion = saveMotion;
         _exit = exit;
 
         _menu = new Forms.ContextMenuStrip();
@@ -57,12 +70,33 @@ public sealed class TrayIconService : IDisposable, INotifier
         _menu.Items.Add("Refresh now", null, (_, _) => _viewModel.RefreshCommand.Execute(null));
         _menu.Items.Add(new Forms.ToolStripSeparator());
 
+        var motionMenu = new Forms.ToolStripMenuItem("Icon motion");
+        var motionItems = new List<Forms.ToolStripMenuItem>();
+        foreach (var (level, text) in (ReadOnlySpan<(TrayMotion, string)>)
+                 [
+                     (TrayMotion.Full, "Full — gags and blinking"),
+                     (TrayMotion.Useful, "Useful only — sync, news, alerts"),
+                     (TrayMotion.Still, "Still — never moves")
+                 ])
+        {
+            var captured = level;
+            var item = new Forms.ToolStripMenuItem(text)
+            {
+                CheckOnClick = false,
+                Checked = motion == level
+            };
+            item.Click += (_, _) => SetMotion(captured, motionItems);
+            motionItems.Add(item);
+            motionMenu.DropDownItems.Add(item);
+        }
+
         var monitoring = new Forms.ToolStripMenuItem("Monitoring mode");
         monitoring.DropDownItems.Add(CreateModeItem("Normal", PowerMode.Normal));
         monitoring.DropDownItems.Add(CreateModeItem("Eco", PowerMode.Eco));
         monitoring.DropDownItems.Add(CreateModeItem("Paused", PowerMode.Paused));
         monitoring.DropDownItems.Add(CreateModeItem("Gaming", PowerMode.Gaming));
         _menu.Items.Add(monitoring);
+        _menu.Items.Add(motionMenu);
 
         _quickAccessMenu = new Forms.ToolStripMenuItem("Quick access");
         _menu.Items.Add(_quickAccessMenu);
@@ -99,10 +133,13 @@ public sealed class TrayIconService : IDisposable, INotifier
             Visible = true
         };
         _notifyIcon.MouseUp += NotifyIcon_MouseUp;
+        _animator = new TrayAnimator(_notifyIcon, motion, TimeProvider.System);
         _viewModel.SnapshotApplied += OnSnapshotApplied;
         _powerManager.ModeChanged += OnPowerModeChanged;
-        UpdateIcon();
     }
+
+    /// <summary>El scheduler avisa desde su propio hilo; el llamador ya lo trae al de la UI.</summary>
+    public void SetSyncing(bool syncing) => _animator.SetSyncing(syncing);
 
     public void Dispose()
     {
@@ -118,7 +155,7 @@ public sealed class TrayIconService : IDisposable, INotifier
         _notifyIcon.MouseUp -= NotifyIcon_MouseUp;
         _notifyIcon.Dispose();
         _menu.Dispose();
-        _currentIcon?.Dispose();
+        _animator.Dispose();
     }
 
     private Forms.ToolStripMenuItem CreateModeItem(string text, PowerMode mode)
@@ -161,15 +198,46 @@ public sealed class TrayIconService : IDisposable, INotifier
 
     private void OnSnapshotApplied(object? sender, DashboardSnapshot snapshot)
     {
-        _budgetPercent = snapshot.BudgetPercent ?? 0m;
+        var now = DateTimeOffset.UtcNow;
+        var paymentDue = snapshot.UpcomingPayments.Any(x => x.DueAt - now <= PaymentHorizon);
         RebuildQuickAccess(snapshot.QuickAccess);
-        UpdateIcon();
+        _animator.SetState(
+            _powerManager.Mode,
+            snapshot.BudgetPercent ?? 0m,
+            snapshot.ProviderStates.Any(x => x.ConsecutiveFailures >= FailuresBeforeSadFace),
+            paymentDue);
+
+        // La mirada solo tiene sentido si el refresh trajo algo distinto: repetirla en cada ciclo
+        // la convertiria en ruido y dejaria de significar "hay novedades".
+        var signature = Signature(snapshot);
+        if (_lastSignature is not null && !string.Equals(_lastSignature, signature, StringComparison.Ordinal))
+        {
+            _animator.PlayGlance();
+        }
+
+        _lastSignature = signature;
         _notifyIcon.Text = snapshot.LastSuccessfulSync is null
             ? "Dev Status Center · waiting for sync"
             : $"Dev Status Center · {snapshot.CurrentSpend.Currency} {snapshot.CurrentSpend.Amount:N2}";
     }
 
-    private void OnPowerModeChanged(object? sender, PowerMode mode) => UpdateIcon();
+    /// <summary>Lo que hace distinto a un snapshot del anterior a ojos de quien mira la bandeja.</summary>
+    private static string Signature(DashboardSnapshot snapshot) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"{snapshot.CurrentSpend.Amount}|{snapshot.Services.Count}|{snapshot.UpcomingPayments.Count}");
+
+    private void SetMotion(TrayMotion motion, List<Forms.ToolStripMenuItem> items)
+    {
+        _animator.Motion = motion;
+        for (var i = 0; i < items.Count; i++)
+        {
+            items[i].Checked = i == (int)motion;
+        }
+
+        _saveMotion(motion);
+    }
+
+    private void OnPowerModeChanged(object? sender, PowerMode mode) => _animator.SetPowerMode(mode);
 
     /// <summary>
     /// Notificación nativa mediante globo del área de notificaciones. Un toast propiamente dicho
@@ -186,6 +254,7 @@ public sealed class TrayIconService : IDisposable, INotifier
             return;
         }
 
+        _animator.PlayAlert();
         _notifyIcon.ShowBalloonTip(
             alert.Severity >= AlertSeverity.Important ? 10_000 : 5_000,
             Truncate(alert.Title, 60),
@@ -262,14 +331,6 @@ public sealed class TrayIconService : IDisposable, INotifier
         }
 
         return item;
-    }
-
-    private void UpdateIcon()
-    {
-        var replacement = DynamicTrayIconRenderer.Create(_powerManager.Mode, _budgetPercent);
-        _notifyIcon.Icon = replacement;
-        _currentIcon?.Dispose();
-        _currentIcon = replacement;
     }
 
     private void ShowError(string message)
