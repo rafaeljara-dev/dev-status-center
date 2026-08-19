@@ -1,18 +1,25 @@
 {
+  "pages": [
+    { "id": "propuesta", "name": "La cara" },
+    { "id": "historia", "name": "Primera ronda" }
+  ],
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1180, "h": 900, "title": "Cuatro marcas" },
-    { "file": "Nitidez.dc.html", "x": 1250, "y": 0, "w": 660, "h": 620, "title": "Por que hoy se ve borroso" },
-    { "file": "Movimiento.dc.html", "x": 1250, "y": 680, "w": 900, "h": 660, "title": "Movimiento" },
-    { "file": "Estados.dc.html", "x": 0, "y": 970, "w": 900, "h": 380, "title": "Colores de estado" }
+    { "file": "Main.dc.html", "page": "propuesta", "x": 0, "y": 0, "w": 1120, "h": 780, "title": "La cara" },
+    { "file": "Gags.dc.html", "page": "propuesta", "x": 1190, "y": 0, "w": 940, "h": 640, "title": "Gags" },
+    { "file": "Movimiento.dc.html", "page": "propuesta", "x": 0, "y": 850, "w": 1120, "h": 820, "title": "Movimiento" },
+    { "file": "Estados.dc.html", "page": "propuesta", "x": 1190, "y": 710, "w": 940, "h": 400, "title": "Colores" },
+    { "file": "Marcas.dc.html", "page": "historia", "x": 0, "y": 0, "w": 1000, "h": 520, "title": "Las cuatro marcas" },
+    { "file": "Nitidez.dc.html", "page": "historia", "x": 1070, "y": 0, "w": 660, "h": 620, "title": "Por que hoy se ve borroso" }
   ],
   "annotations": [
     {
       "id": "brief",
+      "page": "propuesta",
       "x": 0,
-      "y": -280,
-      "w": 620,
-      "text": "EL ICONO DE LA BANDEJA\nHoy es un circulo verde borroso porque se dibuja a 32x32 con suavizado y Windows lo reduce a 16x16. El artboard de la derecha lo explica.\n\nQUE HAY QUE DECIDIR\nUna de las cuatro marcas. Cada una tiene su motivo y su costo escritos debajo; ninguna es la respuesta obvia.\n\nSOBRE EL ESTILO DE CLAUDE CODE\nLo que se toma prestado es el oficio: pixel art nitido de 16x16 y movimiento con proposito. La marca de Claude no se copia; estas cuatro son dibujos propios."
+      "y": -300,
+      "w": 640,
+      "text": "LO QUE PEDISTE Y COMO QUEDO\nLa D como cara, sin circulo. Dos cuadrados por ojos y el chevron como parpado: al cerrarlos queda un >_<.\n\nLA MEZCLA CON LA A\nLas dos filas de abajo son el medidor de presupuesto, siempre visibles. Los gags ocupan la cara entera pero nunca tapan esas dos filas: la broma no puede costarte el dato.\n\nLO QUE FALTA DECIDIR\nSi la sonrisa se queda o la cara es solo ojos, y cuales de las seis animaciones funcionales entran en la primera version."
     }
   ],
-  "launch": { "view": "canvas" }
+  "launch": { "view": "canvas", "page": "propuesta" }
 }
