@@ -5,11 +5,10 @@ $ErrorActionPreference = "Stop"
 dotnet restore DevStatusCenter.slnx --locked-mode
 dotnet build DevStatusCenter.slnx -c Release --no-restore
 dotnet test DevStatusCenter.slnx -c Release --no-build --collect:"XPlat Code Coverage"
+# RID, single-file y self-contained se declaran en el csproj: pasarlos aqui cambiaria el grafo
+# de restore y romperia el modo bloqueado.
 dotnet publish src/DevStatusCenter.Desktop/DevStatusCenter.Desktop.csproj `
   -c Release `
-  -r win-x64 `
-  --self-contained false `
-  -p:PublishSingleFile=true `
   -p:DebugType=None `
   -o artifacts/win-x64
 

@@ -17,6 +17,16 @@
     <RootNamespace>DevStatusCenter.Desktop</RootNamespace>
     <AssemblyName>DevStatusCenter</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!--
+      Las propiedades de publicacion viven aqui y no en la linea de comandos a proposito.
+      Pasarlas como -p: hace que restore resuelva un grafo distinto (RID + ILLink.Tasks) al del
+      restore normal, y entonces packages.lock.json queda inconsistente segun quien lo genero:
+      CI restaura sin RID y falla en modo bloqueado. Declarandolas, hay un unico grafo.
+    -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
   </PropertyGroup>
   <ItemGroup>
     <!--
