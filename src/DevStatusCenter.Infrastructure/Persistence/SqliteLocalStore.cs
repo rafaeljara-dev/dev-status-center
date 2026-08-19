@@ -284,6 +284,79 @@ public sealed class SqliteLocalStore(
         }
     }
 
+    public async Task<IReadOnlyList<Alert>> RecordAndFilterAlertsAsync(
+        IReadOnlyCollection<Alert> candidates,
+        TimeSpan cooldown,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        if (candidates.Count == 0)
+        {
+            return [];
+        }
+
+        var cutoff = SqliteValue.Instant(now - cooldown);
+        var stamp = SqliteValue.Instant(now);
+        var due = new List<Alert>(candidates.Count);
+
+        await connectionFactory.EnterWriteAsync(cancellationToken);
+        try
+        {
+            await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+            await using var transaction = connection.BeginTransaction();
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+
+            // Una alerta nueva se inserta y RETURNING la devuelve: hay que notificarla. Una ya
+            // conocida sólo se actualiza si está activa y su enfriamiento venció; si el WHERE no
+            // se cumple, no vuelve nada y no se notifica. Toda la decisión cabe en una sentencia.
+            command.CommandText = """
+                INSERT INTO alerts(
+                    id, service_id, severity, rule_type, threshold_decimal,
+                    is_enabled, last_triggered_at_ms)
+                VALUES ($id, $serviceId, $severity, $ruleType, $threshold, 1, $now)
+                ON CONFLICT(id) DO UPDATE SET
+                    severity = excluded.severity,
+                    threshold_decimal = excluded.threshold_decimal,
+                    last_triggered_at_ms = excluded.last_triggered_at_ms
+                WHERE alerts.is_enabled = 1
+                  AND (alerts.last_triggered_at_ms IS NULL OR alerts.last_triggered_at_ms <= $cutoff)
+                RETURNING id;
+                """;
+
+            var id = command.Parameters.Add("$id", SqliteType.Text);
+            var serviceId = command.Parameters.Add("$serviceId", SqliteType.Text);
+            var severity = command.Parameters.Add("$severity", SqliteType.Integer);
+            var ruleType = command.Parameters.Add("$ruleType", SqliteType.Text);
+            var threshold = command.Parameters.Add("$threshold", SqliteType.Text);
+            command.Parameters.AddWithValue("$now", stamp);
+            command.Parameters.AddWithValue("$cutoff", cutoff);
+
+            foreach (var alert in candidates)
+            {
+                id.Value = alert.Id;
+                serviceId.Value = (object?)alert.ServiceId ?? DBNull.Value;
+                severity.Value = (int)alert.Severity;
+                ruleType.Value = alert.RuleType;
+                threshold.Value = SqliteValue.Decimal(alert.Threshold);
+
+                if (await command.ExecuteScalarAsync(cancellationToken) is not null)
+                {
+                    due.Add(alert);
+                }
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            connectionFactory.ExitWrite();
+        }
+
+        return due;
+    }
+
     public async Task<int> PruneHistoryAsync(TimeSpan retention, CancellationToken cancellationToken)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(retention, TimeSpan.Zero);

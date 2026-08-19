@@ -25,7 +25,7 @@
 3. Drill-down por proyecto.
 4. Vercel end-to-end.
 5. Cloudflare end-to-end.
-6. Alertas de presupuesto y toast nativo.
+6. ~~Alertas de presupuesto y notificacion nativa.~~ (hecho: reglas de presupuesto, proyeccion, pagos y providers con enfriamiento)
 
 ## MVP 2 — IA
 

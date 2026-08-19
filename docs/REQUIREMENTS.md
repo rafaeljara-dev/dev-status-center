@@ -60,6 +60,16 @@ Los identificadores de esta página sirven para issues, pruebas y PRs.
 - **FR-055** Quick Access no monitorea ni indexa filesystem en background.
 - **FR-056** Los accesos aparecen en popup y menú de tray.
 
+### Alertas
+
+- **FR-070** Al cruzar un umbral de presupuesto se notifica solo el mas alto alcanzado.
+- **FR-071** Una proyeccion que excede el limite avisa antes de gastarlo.
+- **FR-072** Un pago programado avisa dentro de los 3 dias previos.
+- **FR-073** Un provider que necesita credenciales avisa de inmediato; un error transitorio espera 3 fallos.
+- **FR-074** Una alerta ya notificada calla durante su enfriamiento (12 h por defecto).
+- **FR-075** El usuario puede silenciar una alerta concreta y deja de entregarse.
+- **FR-076** No se evalua ninguna alerta antes del primer sync exitoso.
+
 ### Seguridad
 
 - **FR-060** DPAPI usa scope del usuario actual.

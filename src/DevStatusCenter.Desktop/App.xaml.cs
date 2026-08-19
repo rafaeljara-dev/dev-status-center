@@ -1,5 +1,6 @@
 using System.Windows;
 using DevStatusCenter.Application.Abstractions;
+using DevStatusCenter.Application.Alerts;
 using DevStatusCenter.Application.Configuration;
 using DevStatusCenter.Application.Dashboard;
 using DevStatusCenter.Application.Forecast;
@@ -156,7 +157,7 @@ public partial class App : System.Windows.Application, IDisposable
                 ExitApplication);
 
             _scheduler.SnapshotChanged += (_, _) =>
-                _ = Dispatcher.InvokeAsync(() => _ = ReloadDashboardAsync(viewModel));
+                _ = Dispatcher.InvokeAsync(() => _ = ReloadDashboardAsync(viewModel, store, _tray));
             await _scheduler.StartAsync(CancellationToken.None);
             await viewModel.LoadAsync();
 
@@ -267,15 +268,53 @@ public partial class App : System.Windows.Application, IDisposable
         return store.SeedReferenceDataAsync(budgets, [], [], CancellationToken.None);
     }
 
-    private static async Task ReloadDashboardAsync(DashboardViewModel viewModel)
+    private static async Task ReloadDashboardAsync(
+        DashboardViewModel viewModel,
+        ILocalStore store,
+        INotifier? notifier)
     {
         try
         {
             await viewModel.LoadAsync();
+            await RaiseAlertsAsync(viewModel.Snapshot, store, notifier);
         }
         catch
         {
             // Provider state remains available in SQLite; the next UI load can recover.
+        }
+    }
+
+    /// <summary>
+    /// Evalúa las reglas contra el estado ya calculado y notifica sólo lo que el enfriamiento
+    /// deja pasar. Va después de LoadAsync a propósito: la UI se actualiza primero y las alertas
+    /// no pueden retrasar lo que el usuario ve.
+    /// </summary>
+    private static async Task RaiseAlertsAsync(
+        DashboardSnapshot? snapshot,
+        ILocalStore store,
+        INotifier? notifier)
+    {
+        if (snapshot is null || notifier is null)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var candidates = AlertEvaluator.Evaluate(snapshot, now);
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        var due = await store.RecordAndFilterAlertsAsync(
+            candidates,
+            AlertEvaluator.DefaultCooldown,
+            now,
+            CancellationToken.None);
+
+        foreach (var alert in due)
+        {
+            notifier.Notify(alert);
         }
     }
 

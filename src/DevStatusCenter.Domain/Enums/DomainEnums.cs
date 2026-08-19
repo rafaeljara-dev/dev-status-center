@@ -78,6 +78,14 @@ public enum MetricKind
     Custom
 }
 
+public enum AlertSeverity
+{
+    Info,
+    Warning,
+    Important,
+    Critical
+}
+
 public enum PaymentStatus
 {
     Scheduled,

@@ -58,6 +58,7 @@ public sealed record DashboardSnapshot(
     Money ProjectedSpend,
     Money? MonthlyBudget,
     decimal? BudgetPercent,
+    IReadOnlyList<Budget> Budgets,
     IReadOnlyList<DashboardCategoryRow> Categories,
     IReadOnlyList<DashboardServiceRow> Services,
     IReadOnlyList<Payment> UpcomingPayments,

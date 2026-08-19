@@ -2,9 +2,9 @@ using System.Drawing;
 using System.Runtime.Versioning;
 using DevStatusCenter.Application.Abstractions;
 using DevStatusCenter.Application.Dashboard;
+using DevStatusCenter.Domain.Models;
 using DevStatusCenter.Application.Power;
 using DevStatusCenter.Domain.Enums;
-using DevStatusCenter.Domain.Models;
 using DevStatusCenter.Desktop.ViewModels;
 using DevStatusCenter.Desktop.Views;
 using Forms = System.Windows.Forms;
@@ -12,7 +12,7 @@ using Forms = System.Windows.Forms;
 namespace DevStatusCenter.Desktop.Tray;
 
 [SupportedOSPlatform("windows")]
-public sealed class TrayIconService : IDisposable
+public sealed class TrayIconService : IDisposable, INotifier
 {
     private readonly DashboardWindow _window;
     private readonly DashboardViewModel _viewModel;
@@ -153,6 +153,36 @@ public sealed class TrayIconService : IDisposable
 
     private void OnPowerModeChanged(object? sender, PowerMode mode) => UpdateIcon();
 
+    /// <summary>
+    /// Notificación nativa mediante globo del área de notificaciones. Un toast propiamente dicho
+    /// exige identidad MSIX; hasta entonces esto es lo que Windows ofrece a un ejecutable suelto,
+    /// y evita fingir una integración que no existe.
+    /// </summary>
+    public void Notify(Alert alert)
+    {
+        ArgumentNullException.ThrowIfNull(alert);
+
+        // Gaming Mode calla, aunque una alerta se haya colado por un refresh manual previo.
+        if (_disposed || _powerManager.Mode == PowerMode.Gaming)
+        {
+            return;
+        }
+
+        _notifyIcon.ShowBalloonTip(
+            alert.Severity >= AlertSeverity.Important ? 10_000 : 5_000,
+            Truncate(alert.Title, 60),
+            Truncate(alert.Body, 220),
+            alert.Severity switch
+            {
+                AlertSeverity.Critical or AlertSeverity.Important => Forms.ToolTipIcon.Warning,
+                AlertSeverity.Warning => Forms.ToolTipIcon.Warning,
+                _ => Forms.ToolTipIcon.Info
+            });
+    }
+
+    private static string Truncate(string value, int maximum) =>
+        value.Length <= maximum ? value : value[..maximum];
+
     private void RebuildQuickAccess(IReadOnlyList<QuickAccessEntry> entries)
     {
         _quickAccessMenu.DropDownItems.Clear();
@@ -229,7 +259,7 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon.ShowBalloonTip(
             4_000,
             "Dev Status Center",
-            message.Length > 220 ? message[..220] : message,
+            Truncate(message, 220),
             Forms.ToolTipIcon.Warning);
     }
 

@@ -56,6 +56,7 @@ public sealed class DashboardService(
             forecast.ProjectedTotal,
             budget,
             percent,
+            data.Budgets,
             categories,
             services,
             data.UpcomingPayments,
