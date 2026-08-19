@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "agent/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Restore
+        run: dotnet restore DevStatusCenter.slnx --use-lock-file
+      - name: Build
+        run: dotnet build DevStatusCenter.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test DevStatusCenter.slnx -c Release --no-build --collect:"XPlat Code Coverage"

@@ -1,0 +1,18 @@
+# El .editorconfig del repo fija end_of_line = lf. Git debe respetarlo en Windows:
+# normalizamos a LF en el índice y también en el working tree, para que editar en
+# Windows no genere diffs de solo-fin-de-línea.
+* text=auto eol=lf
+
+# Binarios: nunca tocar.
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.pfx  binary
+*.db   binary
+*.zip  binary
+
+# Los scripts de PowerShell toleran LF; se dejan explícitos para evitar sorpresas.
+*.ps1  text eol=lf
+
+# Colapsar ruido en los diffs de PR.
+*.slnx    linguist-generated=false

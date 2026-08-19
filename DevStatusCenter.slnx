@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DevStatusCenter.Domain/DevStatusCenter.Domain.csproj" />
+    <Project Path="src/DevStatusCenter.Application/DevStatusCenter.Application.csproj" />
+    <Project Path="src/DevStatusCenter.Infrastructure/DevStatusCenter.Infrastructure.csproj" />
+    <Project Path="src/DevStatusCenter.Providers.Mock/DevStatusCenter.Providers.Mock.csproj" />
+    <Project Path="src/DevStatusCenter.Desktop/DevStatusCenter.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DevStatusCenter.Tests/DevStatusCenter.Tests.csproj" />
+  </Folder>
+</Solution>
+
