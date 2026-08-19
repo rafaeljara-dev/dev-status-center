@@ -1,0 +1,161 @@
+<UserControl x:Class="DevStatusCenter.Desktop.Controls.MascotFace"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="False"
+             IsHitTestVisible="False"
+             Foreground="{StaticResource MutedTextBrush}">
+  <UserControl.Resources>
+    <!--
+      Una sola linea de tiempo de 24 s en bucle: parpadeos y tres gags. Un unico Storyboard en
+      vez de temporizadores porque WPF lo detiene de verdad cuando el popup se oculta, y porque
+      asi no hay estado que sincronizar entre hilos.
+    -->
+    <Storyboard x:Key="Life" RepeatBehavior="Forever">
+      <!-- Parpadeo. Los dos ojos comparten los mismos tiempos: parpadear desfasado da miedo. -->
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="LeftEyeScale"
+                                     Storyboard.TargetProperty="ScaleY">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:2.55" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:2.65" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:2.75" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.40" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.50" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.60" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.75" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.85" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:17.10" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:17.20" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:17.30" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:24" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="RightEyeScale"
+                                     Storyboard.TargetProperty="ScaleY">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:2.55" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:2.65" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:2.75" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.40" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.50" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.60" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.75" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:9.85" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:17.10" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:17.20" Value="0.12" />
+        <LinearDoubleKeyFrame KeyTime="0:0:17.30" Value="1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:24" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+
+      <!--
+        Los gags entran desde abajo, recortados por el circulo de la cara: parece que la mascota
+        saca el objeto del cuello de la camisa. No significan nada; no son un indicador de estado.
+      -->
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="LaptopSlide"
+                                     Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="11" />
+        <LinearDoubleKeyFrame KeyTime="0:0:4.2" Value="11" />
+        <SplineDoubleKeyFrame KeyTime="0:0:4.7" Value="0" KeySpline="0.2,0.9 0.2,1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:7.0" Value="0" />
+        <SplineDoubleKeyFrame KeyTime="0:0:7.5" Value="11" KeySpline="0.6,0 0.8,0.3" />
+        <LinearDoubleKeyFrame KeyTime="0:0:24" Value="11" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="PhoneSlide"
+                                     Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="11" />
+        <LinearDoubleKeyFrame KeyTime="0:0:11.6" Value="11" />
+        <SplineDoubleKeyFrame KeyTime="0:0:12.1" Value="0" KeySpline="0.2,0.9 0.2,1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:14.4" Value="0" />
+        <SplineDoubleKeyFrame KeyTime="0:0:14.9" Value="11" KeySpline="0.6,0 0.8,0.3" />
+        <LinearDoubleKeyFrame KeyTime="0:0:24" Value="11" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CoffeeSlide"
+                                     Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="11" />
+        <LinearDoubleKeyFrame KeyTime="0:0:19.2" Value="11" />
+        <SplineDoubleKeyFrame KeyTime="0:0:19.7" Value="0" KeySpline="0.2,0.9 0.2,1" />
+        <LinearDoubleKeyFrame KeyTime="0:0:22.0" Value="0" />
+        <SplineDoubleKeyFrame KeyTime="0:0:22.5" Value="11" KeySpline="0.6,0 0.8,0.3" />
+        <LinearDoubleKeyFrame KeyTime="0:0:24" Value="11" />
+      </DoubleAnimationUsingKeyFrames>
+    </Storyboard>
+  </UserControl.Resources>
+
+  <Viewbox Stretch="Uniform">
+    <Canvas Width="24" Height="24">
+
+      <!-- Capa de accesorios, recortada al circulo de la cara. -->
+      <Canvas Width="24" Height="24">
+        <Canvas.Clip>
+          <EllipseGeometry Center="12,12" RadiusX="9.1" RadiusY="9.1" />
+        </Canvas.Clip>
+
+        <Canvas Width="24" Height="24">
+          <Canvas.RenderTransform>
+            <TranslateTransform x:Name="LaptopSlide" Y="11" />
+          </Canvas.RenderTransform>
+          <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                StrokeThickness="1.3"
+                StrokeLineJoin="Round"
+                Data="M 6.6,14.4 h 10.8 v 5.2 h -10.8 z M 4.9,19.6 h 14.2" />
+        </Canvas>
+
+        <Canvas Width="24" Height="24">
+          <Canvas.RenderTransform>
+            <TranslateTransform x:Name="PhoneSlide" Y="11" />
+          </Canvas.RenderTransform>
+          <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                StrokeThickness="1.3"
+                StrokeLineJoin="Round"
+                StrokeStartLineCap="Round"
+                StrokeEndLineCap="Round"
+                Data="M 9.4,13.6 h 5.2 v 8.4 h -5.2 z M 11.2,15.3 h 1.6" />
+        </Canvas>
+
+        <Canvas Width="24" Height="24">
+          <Canvas.RenderTransform>
+            <TranslateTransform x:Name="CoffeeSlide" Y="11" />
+          </Canvas.RenderTransform>
+          <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                StrokeThickness="1.3"
+                StrokeLineJoin="Round"
+                StrokeStartLineCap="Round"
+                StrokeEndLineCap="Round"
+                Data="M 8.2,14.9 h 6.6 v 3.9 a 3.3,3.3 0 0 1 -6.6,0 z M 14.8,15.9 a 1.8,1.8 0 0 1 0,3.2 M 10.6,13.4 v -1.5 M 12.9,13.4 v -1.5" />
+        </Canvas>
+      </Canvas>
+
+      <!-- La cara va encima: los ojos nunca quedan tapados por el accesorio. -->
+      <Ellipse Canvas.Left="2"
+               Canvas.Top="2"
+               Width="20"
+               Height="20"
+               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+               StrokeThickness="1.5" />
+
+      <Rectangle Canvas.Left="7.1"
+                 Canvas.Top="9.1"
+                 Width="3"
+                 Height="3"
+                 RadiusX="1.5"
+                 RadiusY="1.5"
+                 RenderTransformOrigin="0.5,0.5"
+                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}">
+        <Rectangle.RenderTransform>
+          <ScaleTransform x:Name="LeftEyeScale" ScaleY="1" />
+        </Rectangle.RenderTransform>
+      </Rectangle>
+
+      <Rectangle Canvas.Left="13.9"
+                 Canvas.Top="9.1"
+                 Width="3"
+                 Height="3"
+                 RadiusX="1.5"
+                 RadiusY="1.5"
+                 RenderTransformOrigin="0.5,0.5"
+                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}">
+        <Rectangle.RenderTransform>
+          <ScaleTransform x:Name="RightEyeScale" ScaleY="1" />
+        </Rectangle.RenderTransform>
+      </Rectangle>
+    </Canvas>
+  </Viewbox>
+</UserControl>

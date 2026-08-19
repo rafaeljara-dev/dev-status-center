@@ -21,6 +21,7 @@ public sealed class TrayIconService : IDisposable, INotifier
     private readonly IStartupManager _startupManager;
     private readonly Action _manageQuickAccess;
     private readonly Action _manageProviders;
+    private readonly Action<bool> _setGlass;
     private readonly Action _exit;
     private readonly Forms.NotifyIcon _notifyIcon;
     private readonly Forms.ContextMenuStrip _menu;
@@ -37,6 +38,8 @@ public sealed class TrayIconService : IDisposable, INotifier
         IStartupManager startupManager,
         Action manageQuickAccess,
         Action manageProviders,
+        bool glassEnabled,
+        Action<bool> setGlass,
         Action exit)
     {
         _window = window;
@@ -46,6 +49,7 @@ public sealed class TrayIconService : IDisposable, INotifier
         _startupManager = startupManager;
         _manageQuickAccess = manageQuickAccess;
         _manageProviders = manageProviders;
+        _setGlass = setGlass;
         _exit = exit;
 
         _menu = new Forms.ContextMenuStrip();
@@ -72,6 +76,20 @@ public sealed class TrayIconService : IDisposable, INotifier
         };
         startupItem.Click += (_, _) => ToggleStartup(startupItem);
         _menu.Items.Add(startupItem);
+
+        // El cristal se puede apagar: sobre una ventana clara detrás, el texto pierde contraste,
+        // y eso solo lo puede juzgar quien esté mirando la pantalla en ese momento.
+        var glassItem = new Forms.ToolStripMenuItem("Glass background")
+        {
+            Checked = glassEnabled,
+            CheckOnClick = false
+        };
+        glassItem.Click += (_, _) =>
+        {
+            glassItem.Checked = !glassItem.Checked;
+            _setGlass(glassItem.Checked);
+        };
+        _menu.Items.Add(glassItem);
         _menu.Items.Add("Exit", null, (_, _) => _exit());
 
         _notifyIcon = new Forms.NotifyIcon

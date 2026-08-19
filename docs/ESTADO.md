@@ -110,29 +110,47 @@ Riesgo real sin verificar: legibilidad del texto sobre una ventana **clara** det
 
 ---
 
-## 5. EN CURSO — rediseño de la UI
+## 5. Rediseño de la UI — terminado
 
-Trabajo empezado, **no terminado**. Lo hecho:
+Implementado y verificado con `./scripts/verify.ps1` (0 warnings, 71/71 pruebas, auto-test del
+popup en verde). Ejecutable publicado: **0,91 MB**.
 
-- `src/DevStatusCenter.Desktop/Branding/BrandGlyphs.cs` — **listo y compilando**. Trazados de
-  OpenAI, Anthropic/Claude, Vercel, Neon y Cloudflare como `Geometry` congelada, resueltos por
-  `providerId` y con respaldo por `externalId`. Todos los comandos que usan (`M L H V C A Z`) los
-  soporta `Geometry.Parse`.
-- `design/` — los artboards `.dc.html`, `canvas.json`, `gen.py` y `logos.json` que generan el
-  lienzo. Versionados para poder regenerarlo.
+| Pieza | Archivo |
+|---|---|
+| Marcas vectoriales | `Desktop/Branding/BrandGlyphs.cs` |
+| Mascota animada | `Desktop/Controls/MascotFace.xaml(.cs)` |
+| Cristal Acrylic | `Desktop/Windows/WindowBackdrop.cs` |
+| Conversores de vista | `Desktop/Converters/ViewConverters.cs` |
+| Tokens y estilos | `Desktop/App.xaml` |
+| Popup | `Desktop/Views/DashboardWindow.xaml(.cs)` |
 
-Lo que **falta**:
+**La mascota.** Un solo `Storyboard` de 24 s en bucle: parpadeos y tres gags (laptop, celular,
+café) que entran desde abajo recortados por el círculo de la cara. Se detiene en
+`IsVisibleChanged` — con el popup oculto no puede haber CPU (NFR-004) — y no arranca si el sistema
+tiene las animaciones desactivadas (`SystemParameters.ClientAreaAnimation`). **No es indicador de
+estado**: los gags son ajenos a lo que pasa en la aplicación, a propósito.
 
-1. `Controls/MascotFace` — carita con parpadeo y gags. Storyboards de XAML, **no** `DispatcherTimer`:
-   deben detenerse al ocultarse el popup (NFR-004) y respetar "reducir movimiento" del sistema.
-2. `Infrastructure/Windows/WindowBackdrop.cs` — Acrylic + esquinas nativas, con degradación en
-   Windows 10 y un interruptor en el menú del tray por si estorba.
-3. `DashboardViewModel` — `SelectedTab` persistido, `TopSpend`, bloques del medidor, partes de la
-   línea de estado (modo, sync, nº de servicios, nº de alertas).
-4. `DashboardServiceRow` necesita **`ProviderId` y `ExternalId`** para poder resolver la marca; hoy
-   no los expone.
-5. `DashboardWindow.xaml` — reescritura completa según la propuesta.
-6. `App.xaml` — tokens nuevos (familia mono, opacidades del cristal).
+**El cristal.** `WindowBackdrop.TryApply` pide esquinas redondeadas (atributo 33) y Acrylic
+(atributo 38 = 3) al DWM. Se quitó `AllowsTransparency="True"`, que era incompatible. Si el DWM
+rechaza el backdrop (Windows 10), devuelve `false` y la ventana **no** vuelve transparente su
+`CompositionTarget` — hacerlo sin cristal detrás la pintaría de negro. Hay interruptor en el menú
+del tray ("Glass background") y se recuerda en `ui.glass`.
+
+**Pestañas.** `[carita] · AI · CLOUD · BILLS`, teclas 1-4, Esc cierra. La última vista se guarda en
+`ui.lastTab` y se restaura en el arranque, antes del primer `LoadAsync`. La excepción acordada está
+en `FocusAlertTab`: si algún servicio pasa del 85 % de cuota, abre en su categoría y pisa lo
+recordado.
+
+**Tipografía — decidido.** Segoe UI Variable Text + **Cascadia Mono**, ambas de serie en Windows 11.
+Empotrar Space Grotesk + JetBrains Mono habría sumado 150-250 KB al ejecutable, casi un 10 % de su
+tamaño. La escala base subió de 11 a **13 px** tras probarla en pantalla: los tamaños de los mockups
+se leían demasiado pequeños. El ancho del popup pasó de 410 a 440 px para acompañarla.
+
+### Pendiente de mirar con los ojos
+
+El auto-test valida bindings, no estética. Falta comprobar en pantalla: legibilidad del texto
+cuando detrás hay una ventana **clara**, y que quitar `AllowsTransparency` no haya movido el
+posicionamiento junto al tray.
 
 ---
 
@@ -193,8 +211,7 @@ funciona. Conviene una tabla nueva para esos offsets.
 
 ## 7. Siguientes pasos, en orden
 
-1. **Terminar el rediseño de la UI** (sección 5). Al acabar: `./scripts/verify.ps1` y mirar el
-   popup de verdad — el auto-test valida bindings, no estética.
+1. **Mirar el popup en pantalla** y ajustar lo que la sección 5 deja anotado como no verificado.
 2. **Provider local `codex`**: leer `rate_limits` de la sesión más reciente. Es el más barato y da
    un dato exacto sin credenciales.
 3. **Provider local `claude-code`**: parseo incremental de transcripts → tokens por modelo y por

@@ -159,6 +159,12 @@ public partial class App : System.Windows.Application, IDisposable
             }
 
             _dashboardWindow = new DashboardWindow(viewModel, ManageQuickAccess);
+
+            // El cristal se recuerda entre sesiones, igual que el modo de energia: quien lo apaga
+            // porque le estorba no deberia volver a apagarlo en el siguiente arranque.
+            var glassEnabled = await ReadGlassPreferenceAsync(settings);
+            _dashboardWindow.SetGlass(glassEnabled);
+
             void ExitApplication()
             {
                 _dashboardWindow.AllowClose();
@@ -173,11 +179,24 @@ public partial class App : System.Windows.Application, IDisposable
                 startupManager,
                 ManageQuickAccess,
                 ManageProviders,
+                glassEnabled,
+                enabled =>
+                {
+                    _dashboardWindow.SetGlass(enabled);
+                    _ = settings.SetAsync(
+                        "ui.glass",
+                        enabled ? "true" : "false",
+                        CancellationToken.None);
+                },
                 ExitApplication);
 
             _scheduler.SnapshotChanged += (_, _) =>
                 _ = Dispatcher.InvokeAsync(() => _ = ReloadDashboardAsync(viewModel, store, _tray));
             await _scheduler.StartAsync(CancellationToken.None);
+
+            // La pestana recordada se restaura antes del primer LoadAsync: si el snapshot trae una
+            // cuota disparada, LoadAsync la sobreescribe a proposito y abre en esa categoria.
+            await viewModel.RestoreTabAsync(CancellationToken.None);
             await viewModel.LoadAsync();
 
             if (optionsError is not null)
@@ -282,6 +301,12 @@ public partial class App : System.Windows.Application, IDisposable
         _connectionFactory?.Dispose();
         _singleInstance?.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    private static async Task<bool> ReadGlassPreferenceAsync(SqliteSettingsStore settings)
+    {
+        var saved = await settings.GetAsync("ui.glass", CancellationToken.None);
+        return saved is null || (bool.TryParse(saved, out var enabled) && enabled);
     }
 
     private static async Task<PowerMode> ReadPowerModeAsync(SqliteSettingsStore settings)

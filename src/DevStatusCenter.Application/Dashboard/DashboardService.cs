@@ -25,6 +25,8 @@ public sealed class DashboardService(
             return new DashboardServiceRow(
                 item.Service.Id,
                 item.Service.Name,
+                item.Service.ProviderId,
+                item.Service.ExternalId,
                 item.Service.Category,
                 item.CurrentCost,
                 line.Projected,

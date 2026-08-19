@@ -39,6 +39,10 @@ public sealed record ForecastResult(
 public sealed record DashboardServiceRow(
     string Id,
     string Name,
+    // La UI resuelve la marca por ProviderId y, si no la conoce, por ExternalId. Sin estos dos
+    // campos el dashboard solo tiene un nombre para mostrar, que no basta para elegir un logo.
+    string ProviderId,
+    string ExternalId,
     ServiceCategory Category,
     Money Current,
     Money Projected,
