@@ -120,7 +120,12 @@ public sealed class RefreshScheduler : IAsyncDisposable
 
         _disposed = true;
         _powerManager.ModeChanged -= OnPowerModeChanged;
-        await _lifetimeCts.CancelAsync();
+
+        // ConfigureAwait(false) explicito: si el llamador bloquea su hilo esperando este
+        // DisposeAsync -- que es justo lo que hace el apagado de una app WPF -- reanudar en su
+        // contexto seria un interbloqueo. La UI se quedaria colgada, invisible y sin poder
+        // reiniciarse porque el mutex de instancia unica sigue tomado.
+        await _lifetimeCts.CancelAsync().ConfigureAwait(false);
         _commands.Writer.TryComplete();
         CancelActiveRefresh();
 
@@ -128,7 +133,7 @@ public sealed class RefreshScheduler : IAsyncDisposable
         {
             try
             {
-                await _loopTask;
+                await _loopTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

@@ -70,7 +70,9 @@
                   <TextBlock Text="{Binding ProjectedSpend}" FontSize="21" FontWeight="SemiBold" Margin="0,2,0,0" />
                 </StackPanel>
               </Grid>
-              <ProgressBar Value="{Binding BudgetPercent}"
+              <!-- ProgressBar.Value enlaza TwoWay por defecto y BudgetPercent es de solo
+                   lectura: sin Mode=OneWay, WPF lanza al activar el binding. -->
+              <ProgressBar Value="{Binding BudgetPercent, Mode=OneWay}"
                            Maximum="100"
                            Height="6"
                            Margin="0,13,0,7"

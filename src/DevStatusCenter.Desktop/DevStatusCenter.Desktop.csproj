@@ -1,8 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <!--
+      TFM sin version de SDK a proposito. El sufijo 10.0.19041.0 activa las proyecciones WinRT y
+      arrastra Microsoft.Windows.SDK.NET.dll: 24,9 MB, el 92% del ejecutable publicado, para una
+      aplicacion que no llama a una sola API WinRT. SupportedOSPlatformVersion sigue declarando el
+      minimo real de Windows sin pagar ese peso.
+      Si algun dia se adoptan toasts con identidad MSIX (Windows.UI.Notifications), habra que
+      volver al TFM versionado y asumir el tamano.
+    -->
+    <TargetFramework>net10.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>

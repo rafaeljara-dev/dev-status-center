@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using DevStatusCenter.Application.Abstractions;
 using DevStatusCenter.Application.Alerts;
 using DevStatusCenter.Application.Configuration;
@@ -17,6 +18,7 @@ using DevStatusCenter.Infrastructure.Security;
 using DevStatusCenter.Infrastructure.Windows;
 using DevStatusCenter.Providers.Mock;
 using DevStatusCenter.Providers.Neon;
+using DevStatusCenter.Desktop.Diagnostics;
 using DevStatusCenter.Desktop.Tray;
 using DevStatusCenter.Desktop.ViewModels;
 using DevStatusCenter.Desktop.Views;
@@ -36,9 +38,24 @@ public partial class App : System.Windows.Application, IDisposable
     private ProviderSettingsWindow? _providerSettings;
     private bool _isDisposed;
 
+    /// <summary>Tope para detener el scheduler al salir. Salir nunca puede quedarse colgado.</summary>
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
+    private BindingErrorListener? _bindingErrors;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        HookFailureLogging();
+
+        // --selftest: arranca, renderiza el popup, verifica que ningun binding falle y sale.
+        // Es lo que convierte "esperemos que la ventana abra" en un hecho comprobado, tanto en
+        // CI como antes de entregar una build.
+        var selfTest = e.Args.Contains("--selftest", StringComparer.OrdinalIgnoreCase);
+        if (selfTest)
+        {
+            _bindingErrors = BindingErrorListener.Attach();
+        }
+
         _singleInstance = SingleInstanceGuard.TryAcquire();
         if (_singleInstance is null)
         {
@@ -51,6 +68,8 @@ public partial class App : System.Windows.Application, IDisposable
             var localRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "DevStatusCenter");
+            Directory.CreateDirectory(localRoot);
+            CrashLog.Initialize(localRoot);
 
             // La plantilla se escribe en el primer arranque para que exista un archivo real que
             // editar; a partir de ahi manda lo que haya en disco.
@@ -165,6 +184,11 @@ public partial class App : System.Windows.Application, IDisposable
             {
                 viewModel.ReportConfigurationProblem(optionsError);
             }
+
+            if (selfTest)
+            {
+                await RunSelfTestAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -175,6 +199,53 @@ public partial class App : System.Windows.Application, IDisposable
                 MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    /// <summary>
+    /// Renderiza el popup de verdad -- construirlo no ejercita los bindings, mostrarlo si -- y sale
+    /// con codigo distinto de cero si WPF reporto algun binding roto o si algo llego a crash.log.
+    /// </summary>
+    private async Task RunSelfTestAsync()
+    {
+        _dashboardWindow!.ShowNearTray();
+        _dashboardWindow.UpdateLayout();
+
+        // Los bindings se activan en una pasada posterior del dispatcher, no durante Show().
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+        await Task.Delay(TimeSpan.FromMilliseconds(750));
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+
+        var errors = _bindingErrors?.Errors ?? [];
+        foreach (var error in errors)
+        {
+            CrashLog.Write("Binding", new InvalidOperationException(error));
+        }
+
+        _dashboardWindow.AllowClose();
+        Shutdown(errors.Count == 0 ? 0 : 2);
+    }
+
+    /// <summary>
+    /// Sin consola y sin ventana principal, una excepcion no controlada se veria igual que estar
+    /// funcionando en silencio. Se registra siempre, y las que llegan al dispatcher no matan el
+    /// proceso: perder el monitoreo entero por un fallo de UI es peor que seguir con lo que hay.
+    /// </summary>
+    private void HookFailureLogging()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            CrashLog.Write("AppDomain", args.ExceptionObject as Exception);
+
+        DispatcherUnhandledException += (_, args) =>
+        {
+            CrashLog.Write("Dispatcher", args.Exception);
+            args.Handled = true;
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            CrashLog.Write("Task", args.Exception);
+            args.SetObserved();
+        };
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -194,7 +265,17 @@ public partial class App : System.Windows.Application, IDisposable
         _tray?.Dispose();
         if (_scheduler is not null)
         {
-            _scheduler.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            // Task.Run saca la espera del dispatcher: awaitear ahi y bloquear aqui es el
+            // interbloqueo clasico de sync-sobre-async. El limite de tiempo garantiza ademas que
+            // un provider atascado no deje el proceso vivo e invisible al salir.
+            var scheduler = _scheduler;
+            var stopped = Task.Run(async () => await scheduler.DisposeAsync().ConfigureAwait(false));
+            if (!stopped.Wait(ShutdownTimeout))
+            {
+                CrashLog.Write(
+                    "Shutdown",
+                    new TimeoutException($"El scheduler no se detuvo en {ShutdownTimeout.TotalSeconds:N0} s."));
+            }
         }
 
         _httpTransport?.Dispose();

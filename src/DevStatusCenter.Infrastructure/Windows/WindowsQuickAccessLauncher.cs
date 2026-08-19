@@ -5,7 +5,7 @@ using DevStatusCenter.Domain.Models;
 
 namespace DevStatusCenter.Infrastructure.Windows;
 
-[SupportedOSPlatform("windows10.0.19041")]
+[SupportedOSPlatform("windows")]
 public sealed class WindowsQuickAccessLauncher(string editorExecutable = "code") : IQuickAccessLauncher
 {
     public Task OpenAsync(

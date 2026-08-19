@@ -23,6 +23,10 @@ Este repositorio implementa **MVP 0** como una vertical funcional:
 - Quick Access jerárquico para grupos, carpetas y proyectos;
 - apertura segura en Explorer, Windows Terminal o VS Code;
 - opción **Start with Windows** mediante la clave Run del usuario actual;
+- alertas de presupuesto, proyección, pagos y providers, con enfriamiento;
+- notificación nativa desde el tray;
+- registro de excepciones no controladas en `crash.log`;
+- auto-test (`--selftest`) que renderiza el popup y falla si un binding se rompe;
 - pruebas unitarias e integración y CI para Windows.
 
 **Neon** ya está implementado (consumo oficial + costo calculado desde tarifas de lista,
@@ -40,7 +44,7 @@ Requisitos:
 ```powershell
 git clone <URL-DEL-REPOSITORIO>
 cd dev-status-center
-dotnet restore DevStatusCenter.slnx --use-lock-file
+dotnet restore DevStatusCenter.slnx --locked-mode
 dotnet build DevStatusCenter.slnx -c Release
 dotnet run --project src/DevStatusCenter.Desktop/DevStatusCenter.Desktop.csproj
 ```
@@ -52,6 +56,12 @@ Para validar y publicar una build local:
 ```powershell
 ./scripts/verify.ps1
 ```
+
+Hace restore reproducible, build sin warnings, pruebas, publicación y auto-test de la build
+publicada. El resultado son **2,76 MB** en `artifacts/win-x64`, framework-dependent.
+
+Medido en reposo (modo Normal, popup cerrado, 60 s): **0,0 % de CPU**, 29,8 MB de memoria
+privada, 14 hilos.
 
 ## Arquitectura en una imagen
 

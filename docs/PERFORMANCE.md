@@ -44,6 +44,42 @@ histórico completo. Reproducida con el volumen que genera `MockProvider` (14 fi
 NFR-007 pide menos de 250 ms. La versión anterior lo rompía dentro del primer mes sólo por
 dejar la aplicación encendida. Ver [ADR 0005](decisions/0005-current-state-projection.md).
 
+### Consumo en reposo (19-ago-2026)
+
+Build publicada, modo Normal, popup cerrado, muestra de 60 s tras el primer refresh
+(`scripts/measure-idle.ps1 -SampleSeconds 60`):
+
+| Métrica | Medido |
+|---|---:|
+| CPU promedio | **0,0 %** |
+| Working set | 87,4 MB |
+| Memoria privada | 29,8 MB |
+| Hilos | 14 |
+| Handles | 483 |
+
+NFR-001 se cumple: la CPU en reposo es indistinguible de cero. El working set queda por encima
+del objetivo de 80 MB que este documento fijó **antes** de tener datos; ese número se escribió a
+ojo. Lo dominan las imágenes mapeadas de WPF y del runtime compartido, que ninguna opción de GC
+mueve. La cifra que refleja el costo real de la aplicación es la memoria privada: ~30 MB.
+
+**Resultado negativo, anotado para no repetirlo:** se probó
+`ConcurrentGarbageCollection=false` + `ServerGarbageCollection=false` + `TieredPGO`. Diferencia
+medida: 87,6 → 87,4 MB de working set y 30,05 → 29,83 MB de privada, con el mismo número de
+hilos. Está dentro del ruido, así que se revirtió en lugar de dejar configuración sin
+justificación. `InvariantGlobalization` sí ahorraría memoria pero rompería el formato de moneda y
+fecha según la cultura del usuario: descartado.
+
+### Tamaño del ejecutable
+
+El publicado pesaba **27 MB**, de los cuales 24,9 MB eran `Microsoft.Windows.SDK.NET.dll`: las
+proyecciones WinRT que arrastra el sufijo `10.0.19041.0` del TFM, en una aplicación que no llama a
+una sola API WinRT. Con `net10.0-windows` a secas:
+
+| | Antes | Ahora |
+|---|---:|---:|
+| `DevStatusCenter.exe` | 26,33 MB | **0,87 MB** |
+| Total publicado | 27,0 MB | **2,76 MB** |
+
 ## Medición pendiente
 
 1. Compilar Release y ejecutar la build publicada.
