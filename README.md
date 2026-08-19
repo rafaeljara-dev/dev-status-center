@@ -113,6 +113,10 @@ Desktop -> MockProvider ----> Application -> Domain
 
 ## Documentación para continuar
 
+**Empieza por [docs/ESTADO.md](docs/ESTADO.md)**: estado real, defectos ya corregidos, decisiones
+de diseño acordadas, qué quedó a medias y los siguientes pasos en orden.
+
+
 - [Contexto y límites](docs/PROJECT_CONTEXT.md)
 - [Requisitos y criterios de aceptación](docs/REQUIREMENTS.md)
 - [Arquitectura](docs/ARCHITECTURE.md)

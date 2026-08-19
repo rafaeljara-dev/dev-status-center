@@ -1,0 +1,37 @@
+{
+  "pages": [
+    { "id": "propuesta", "name": "Propuesta" },
+    { "id": "exploracion", "name": "Exploración" }
+  ],
+  "artboards": [
+    { "file": "Hibrido.dc.html", "page": "propuesta", "x": 0, "y": 0, "w": 620, "h": 880, "title": "La propuesta · C arriba + B abajo" },
+    { "file": "Carita.dc.html", "page": "propuesta", "x": 690, "y": 0, "w": 660, "h": 430, "title": "La carita = el estado" },
+    { "file": "Marcas.dc.html", "page": "propuesta", "x": 690, "y": 490, "w": 660, "h": 430, "title": "Logos de marca" },
+    { "file": "Cristal.dc.html", "page": "propuesta", "x": 1420, "y": 0, "w": 660, "h": 560, "title": "Cristal: qué se puede en WPF" },
+
+    { "file": "Actual.dc.html", "page": "exploracion", "x": 0, "y": 0, "w": 410, "h": 740, "title": "Hoy · lo que ya existe" },
+    { "file": "Main.dc.html", "page": "exploracion", "x": 460, "y": 0, "w": 410, "h": 740, "title": "A · Flujo continuo" },
+    { "file": "Segmentos.dc.html", "page": "exploracion", "x": 920, "y": 0, "w": 410, "h": 740, "title": "B · Segmentos" },
+    { "file": "Consola.dc.html", "page": "exploracion", "x": 1380, "y": 0, "w": 410, "h": 740, "title": "C · Consola" },
+    { "file": "Sistema.dc.html", "page": "exploracion", "x": 0, "y": 820, "w": 1760, "h": 460, "title": "Sistema visual compartido" }
+  ],
+  "annotations": [
+    {
+      "id": "nota-hibrido",
+      "page": "propuesta",
+      "x": 0,
+      "y": -300,
+      "w": 620,
+      "text": "LA MEZCLA QUE PEDISTE\nDe C: la línea de estado monoespaciada, la cifra grande con tabular-nums y el medidor de bloques. De B: las pestañas, el aire, las tarjetas y el ritmo.\n\nLa primera pestaña es la carita, y de paso resuelve el punto de estado duplicado que tenías en el encabezado.\n\nMEMORIA DE PESTAÑA\nSe guarda la última que miraste en la tabla app_settings que ya existe (clave ui.lastTab), igual que se guarda hoy el modo de energía. Abre donde la dejaste. Una excepción sensata: si hay una alerta activa, abre en la pestaña de esa alerta y no en la recordada — enterarte gana sobre la costumbre.\n\nEL CRISTAL\nAquí está simulado con backdrop-filter sobre un escritorio falso, solo para que se vea. En la app real es Acrylic nativo de Windows: el artboard de la derecha explica qué cuesta y qué hay que cambiar."
+    },
+    {
+      "id": "nota-exploracion",
+      "page": "exploracion",
+      "x": 0,
+      "y": -170,
+      "w": 620,
+      "text": "DE DÓNDE SALIÓ LA PROPUESTA\nTres direcciones sobre la UI actual reconstruida. Ganó la mezcla: encabezado de C (denso, monoespaciado, se lee de un vistazo) con el cuerpo de B (pestañas y aire, escala sin crecer a lo alto).\n\nSe queda aquí como historia: si algo de A o C hace falta más adelante, ya está dibujado."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "propuesta" }
+}

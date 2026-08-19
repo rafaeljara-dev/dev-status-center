@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #05070B; font-family: "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #62D99C; } a:hover { color: #8AE7B7; }
+    /* La carita parpadea. Solo mientras el popup esta abierto: al ocultarse, WPF
+       detiene el Storyboard y el costo vuelve a cero (NFR-004). */
+    @keyframes parpadeo { 0%, 91%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
+    .ojo { transform-box: fill-box; transform-origin: center; animation: parpadeo 5.5s ease-in-out infinite; }
+    /* Reflejo especular que recorre el borde superior del cristal, muy lento y muy tenue. */
+    @keyframes brillo { 0% { transform: translateX(-60%); } 100% { transform: translateX(160%); } }
+    .brillo { animation: brillo 9s linear infinite; }
+    @media (prefers-reduced-motion: reduce) { .ojo, .brillo { animation: none; } }
+  </style>
+</helmet>
+<div style="width: 660px; height: 430px; box-sizing: border-box; background: #0E1219; border: 1px solid #1E2531; border-radius: 14px; padding: 26px 30px; color: #F5F7FA;">
+  <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: #6F7D91; padding-bottom: 12px; border-bottom: 1px solid #1E2531;">LA CARITA ES EL ESTADO</div>
+  <div style="font-size: 11px; color: #99A4B5; margin-top: 14px; line-height: 1.55; max-width: 560px;">Hoy el encabezado dibuja el punto de estado dos veces y no dice nada que el color no dijera ya. La carita ocupa ese hueco: es la primera pestaña, es el icono del tray, y su gesto comunica el estado antes de que leas una cifra. El color sigue siendo tu paleta de umbrales, sin inventar ninguno.</div>
+
+  <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; margin-top: 24px;">
+    <div style="text-align: center;">
+      <div style="width: 74px; height: 74px; margin: 0 auto; border-radius: 18px; background: #141A24; border: 1px solid #202836; display: flex; align-items: center; justify-content: center;"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#62D99C" stroke-width="1.5"></circle><rect class="ojo" x="7.1" y="9.1" width="3" height="3" rx="1.5" fill="#62D99C"></rect><rect class="ojo" x="13.9" y="9.1" width="3" height="3" rx="1.5" fill="#62D99C"></rect><path d="M8.4 15.1c1 1 2.2 1.5 3.6 1.5s2.6-.5 3.6-1.5" stroke="#62D99C" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg></div>
+      <div style="font-size: 12px; font-weight: 500; margin-top: 11px;">Normal</div>
+      <div style="font-size: 10px; color: #6F7D91; margin-top: 4px; line-height: 1.4;">menos del 70 % del presupuesto</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 74px; height: 74px; margin: 0 auto; border-radius: 18px; background: #141A24; border: 1px solid #202836; display: flex; align-items: center; justify-content: center;"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#F6C85F" stroke-width="1.5"></circle><rect class="ojo" x="7.1" y="9.1" width="3" height="3" rx="1.5" fill="#F6C85F"></rect><rect class="ojo" x="13.9" y="9.1" width="3" height="3" rx="1.5" fill="#F6C85F"></rect><path d="M8.7 15.9h6.6" stroke="#F6C85F" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg></div>
+      <div style="font-size: 12px; font-weight: 500; margin-top: 11px;">Atención</div>
+      <div style="font-size: 10px; color: #6F7D91; margin-top: 4px; line-height: 1.4;">70 % · boca recta, sin drama</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 74px; height: 74px; margin: 0 auto; border-radius: 18px; background: #141A24; border: 1px solid #202836; display: flex; align-items: center; justify-content: center;"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#F49A5A" stroke-width="1.5"></circle><rect class="ojo" x="7.1" y="9.1" width="3" height="3" rx="1.5" fill="#F49A5A"></rect><rect class="ojo" x="13.9" y="9.1" width="3" height="3" rx="1.5" fill="#F49A5A"></rect><path d="M8.4 16.6c1-1 2.2-1.5 3.6-1.5s2.6.5 3.6 1.5" stroke="#F49A5A" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg></div>
+      <div style="font-size: 12px; font-weight: 500; margin-top: 11px;">Importante</div>
+      <div style="font-size: 10px; color: #6F7D91; margin-top: 4px; line-height: 1.4;">85 % · ceja caída</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 74px; height: 74px; margin: 0 auto; border-radius: 18px; background: #141A24; border: 1px solid #202836; display: flex; align-items: center; justify-content: center;"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#F06464" stroke-width="1.5"></circle><circle class="ojo" cx="8.6" cy="10.6" r="2.1" fill="#F06464"></circle><circle class="ojo" cx="15.4" cy="10.6" r="2.1" fill="#F06464"></circle><path d="M8.4 17c1-1.2 2.2-1.8 3.6-1.8s2.6.6 3.6 1.8" stroke="#F06464" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg></div>
+      <div style="font-size: 12px; font-weight: 500; margin-top: 11px;">Crítico</div>
+      <div style="font-size: 10px; color: #6F7D91; margin-top: 4px; line-height: 1.4;">95 % · ojos grandes</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 74px; height: 74px; margin: 0 auto; border-radius: 18px; background: #141A24; border: 1px solid #202836; display: flex; align-items: center; justify-content: center;"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#778292" stroke-width="1.5"></circle><path d="M6.6 10.8h4M13.4 10.8h4" stroke="#778292" stroke-width="1.6" stroke-linecap="round"></path><path d="M9.6 15.6h4.8" stroke="#778292" stroke-width="1.5" stroke-linecap="round"></path></svg></div>
+      <div style="font-size: 12px; font-weight: 500; margin-top: 11px;">Pausado</div>
+      <div style="font-size: 10px; color: #6F7D91; margin-top: 4px; line-height: 1.4;">ojos cerrados, no hay red</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 74px; height: 74px; margin: 0 auto; border-radius: 18px; background: #141A24; border: 1px solid #202836; display: flex; align-items: center; justify-content: center;"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#A98AF4" stroke-width="1.5"></circle><rect x="5.4" y="8.8" width="13.2" height="4.4" rx="2.2" fill="#A98AF4"></rect><path d="M9.4 16.2h5.2" stroke="#A98AF4" stroke-width="1.5" stroke-linecap="round"></path></svg></div>
+      <div style="font-size: 12px; font-weight: 500; margin-top: 11px;">Modo juego</div>
+      <div style="font-size: 10px; color: #6F7D91; margin-top: 4px; line-height: 1.4;">visor: no molesta a nadie</div>
+    </div></div>
+
+  <div style="display: flex; gap: 30px; margin-top: 28px; padding-top: 18px; border-top: 1px solid #1E2531;">
+    <div style="flex-grow: 1;">
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: #6F7D91;">PARPADEO</div>
+      <div style="font-size: 11px; color: #99A4B5; margin-top: 8px; line-height: 1.5;">Un parpadeo cada 5,5 s, de 180 ms. Solo mientras el popup está visible: al ocultarse se detiene el Storyboard y el costo vuelve a cero. Respeta «reducir movimiento» del sistema.</div>
+    </div>
+    <div style="flex-grow: 1;">
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: #6F7D91;">A DECIDIR</div>
+      <div style="font-size: 11px; color: #99A4B5; margin-top: 8px; line-height: 1.5;">NFR-006 dice «sin animaciones permanentes». Un parpadeo en bucle mientras miras el popup es defendible; si prefieres ser estricto, que parpadee dos veces al abrir y se quede quieto.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":660,"height":430}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

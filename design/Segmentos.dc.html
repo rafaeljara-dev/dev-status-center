@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #05070B; font-family: "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #62D99C; } a:hover { color: #8AE7B7; }
+  </style>
+</helmet>
+<div style="width: 410px; height: 740px; box-sizing: border-box; background: #0E1219; border: 1px solid #212934; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; color: #F5F7FA;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px 20px;">
+    <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.14em;">DEV STATUS</span>
+    <div style="display: flex; align-items: center; gap: 7px; border: 1px solid #212934; border-radius: 999px; padding: 4px 10px 4px 8px;">
+      <span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}};"></span>
+      <span style="font-size: 10px; font-weight: 500; letter-spacing: 0.08em;">NORMAL</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #1B222D; padding: 0 20px;">
+    <div style="padding: 10px 0 11px 0; text-align: center; border-bottom: 2px solid {{accent}}; margin-bottom: -1px;">
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em;">RESUMEN</div>
+    </div>
+    <div style="padding: 10px 0 11px 0; text-align: center; border-bottom: 2px solid transparent; margin-bottom: -1px;">
+      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: #77869B;">IA</div>
+    </div>
+    <div style="padding: 10px 0 11px 0; text-align: center; border-bottom: 2px solid transparent; margin-bottom: -1px;">
+      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: #77869B;">CLOUD</div>
+    </div>
+    <div style="padding: 10px 0 11px 0; text-align: center; border-bottom: 2px solid transparent; margin-bottom: -1px;">
+      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: #77869B;">PAGOS</div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; overflow: hidden; padding: 20px;">
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <div style="background: #141A24; border: 1px solid #1F2833; border-radius: 10px; padding: 14px 16px;">
+        <div style="font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: #77869B;">GASTADO</div>
+        <div style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 8px; line-height: 1;">128.01</div>
+      </div>
+      <div style="background: #141A24; border: 1px solid #1F2833; border-radius: 10px; padding: 14px 16px;">
+        <div style="font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: #77869B;">PROYECTADO</div>
+        <div style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 8px; line-height: 1; color: #C6D0DD;">164.22</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 18px;">
+      <div style="height: 6px; background: #1B222D; border-radius: 999px; overflow: hidden; position: relative;">
+        <div style="width: 64%; height: 6px; background: {{accent}}; border-radius: 999px;"></div>
+        <div style="position: absolute; left: 70%; top: 0; width: 1px; height: 6px; background: #0E1219;"></div>
+        <div style="position: absolute; left: 85%; top: 0; width: 1px; height: 6px; background: #0E1219;"></div>
+        <div style="position: absolute; left: 95%; top: 0; width: 1px; height: 6px; background: #0E1219;"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 8px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; color: #77869B;">
+        <span>64 % de 200 USD</span>
+        <span>umbrales 70 · 85 · 95</span>
+      </div>
+    </div>
+
+    <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: #77869B; margin: 26px 0 12px 0;">MAYOR GASTO</div>
+
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <span style="font-size: 13px; font-weight: 500;">OpenAI</span>
+        <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px;">17.43</span>
+      </div>
+      <div style="height: 4px; background: #1B222D; border-radius: 999px;"><div style="width: 100%; height: 4px; background: {{accent}}; border-radius: 999px;"></div></div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <span style="font-size: 13px; font-weight: 500;">Anthropic</span>
+        <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px;">11.58</span>
+      </div>
+      <div style="height: 4px; background: #1B222D; border-radius: 999px;"><div style="width: 66%; height: 4px; background: {{accent}}; opacity: 0.65; border-radius: 999px;"></div></div>
+    </div>
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <span style="font-size: 13px; font-weight: 500;">Vercel</span>
+        <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px;">7.24</span>
+      </div>
+      <div style="height: 4px; background: #1B222D; border-radius: 999px;"><div style="width: 42%; height: 4px; background: {{accent}}; opacity: 0.4; border-radius: 999px;"></div></div>
+    </div>
+
+    <div style="background: #141A24; border: 1px solid #1F2833; border-radius: 10px; padding: 13px 16px; margin-top: 26px; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: #77869B;">PRÓXIMO PAGO</div>
+        <div style="font-size: 13px; font-weight: 500; margin-top: 5px;">Claude · en 2 días</div>
+      </div>
+      <div style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 17px; font-weight: 500;">20.00</div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 18px 20px; border-top: 1px solid #1B222D;">
+    <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; color: #62708A;">SINCRONIZADO HACE 8 MIN</span>
+    <div style="display: flex; align-items: center; gap: 16px; color: #77869B;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path><circle cx="9" cy="6" r="2" fill="#0E1219"></circle><circle cx="15" cy="12" r="2" fill="#0E1219"></circle><circle cx="8" cy="18" r="2" fill="#0E1219"></circle></svg>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#62D99C","options":["#62D99C","#7CE0FF","#A98AF4","#F6C85F"],"section":"Estilo"},"$preview":{"width":410,"height":740}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#62D99C' };
+  }
+}
+</script>
+</body>
+</html>

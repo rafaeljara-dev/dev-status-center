@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #05070B; font-family: "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #62D99C; } a:hover { color: #8AE7B7; }
+  </style>
+</helmet>
+<div style="width: 660px; height: 560px; box-sizing: border-box; background: #0E1219; border: 1px solid #1E2531; border-radius: 14px; padding: 26px 30px; color: #F5F7FA;">
+
+  <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: #6F7D91; padding-bottom: 12px; border-bottom: 1px solid #1E2531;">CRISTAL: QUÉ SE PUEDE DE VERDAD EN WPF</div>
+
+  <div style="font-size: 11px; color: #99A4B5; margin-top: 14px; line-height: 1.55;">El «liquid glass» que se ve en la web se hace con <span style="font-family: 'JetBrains Mono', monospace; color: #C6D0DD;">backdrop-filter</span> más un <span style="font-family: 'JetBrains Mono', monospace; color: #C6D0DD;">feDisplacementMap</span> de SVG para simular refracción. Nada de eso existe en WPF, y meter un WebView para conseguirlo contradice todo el proyecto. Pero Windows ya trae el efecto de fábrica.</div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 20px;">
+
+    <div style="background: #141A24; border: 1px solid #202836; border-radius: 10px; padding: 16px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <span style="font-size: 13px; font-weight: 600;">Mica</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #6F7D91;">DWMSBT_MAINWINDOW = 2</span>
+      </div>
+      <div style="font-size: 11px; color: #99A4B5; margin-top: 10px; line-height: 1.5;">Muestrea el fondo de escritorio <strong style="color: #F5F7FA; font-weight: 500;">una sola vez</strong> y lo tiñe. Baratísimo. Pensado para la capa de fondo de una app que vive abierta.</div>
+      <div style="font-size: 11px; color: #6F7D91; margin-top: 10px; line-height: 1.5;">No sirve aquí: el popup aparece sobre lo que sea que tengas abierto, no sobre el wallpaper.</div>
+    </div>
+
+    <div style="background: #141A24; border: 1px solid #2C6B52; border-radius: 10px; padding: 16px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <span style="font-size: 13px; font-weight: 600;">Acrylic <span style="font-size: 10px; color: #62D99C; font-weight: 500;">← el nuestro</span></span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #6F7D91;">DWMSBT_TRANSIENTWINDOW = 3</span>
+      </div>
+      <div style="font-size: 11px; color: #99A4B5; margin-top: 10px; line-height: 1.5;">Desenfoca en tiempo real lo que hay detrás. Microsoft dice que se use <strong style="color: #F5F7FA; font-weight: 500;">solo en superficies transitorias que se cierran al perder el foco</strong>: menús, flyouts.</div>
+      <div style="font-size: 11px; color: #62D99C; margin-top: 10px; line-height: 1.5;">Tu popup es exactamente eso: ya se oculta en <span style="font-family: 'JetBrains Mono', monospace;">Window_Deactivated</span>. Es el caso de uso que la guía describe.</div>
+    </div>
+
+  </div>
+
+  <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid #1E2531;">
+    <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: #6F7D91;">EL ESTORBO</div>
+    <div style="font-size: 11px; color: #99A4B5; margin-top: 10px; line-height: 1.55;">Hoy <span style="font-family: 'JetBrains Mono', monospace; color: #C6D0DD;">DashboardWindow.xaml</span> lleva <span style="font-family: 'JetBrains Mono', monospace; color: #F49A5A;">AllowsTransparency="True"</span> para poder redondear las esquinas. Esa bandera es <strong style="color: #F5F7FA; font-weight: 500;">incompatible</strong> con los backdrops del DWM: mientras esté puesta, no hay Acrylic posible.</div>
+    <div style="font-size: 11px; color: #99A4B5; margin-top: 10px; line-height: 1.55;">El cambio es quitarla y pedirle las esquinas al propio Windows, que además las dibuja mejor:</div>
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; background: #0A0E15; border: 1px solid #1E2531; border-radius: 8px; padding: 12px 14px; margin-top: 10px; line-height: 1.7; color: #C6D0DD;">
+      <div><span style="color: #6F7D91;">// esquinas redondeadas nativas</span></div>
+      <div>DwmSetWindowAttribute(hwnd, <span style="color: #62D99C;">33</span>, <span style="color: #62D99C;">2</span>, 4);  <span style="color: #6F7D91;">// CORNER_PREFERENCE = ROUND</span></div>
+      <div style="margin-top: 6px;"><span style="color: #6F7D91;">// cristal</span></div>
+      <div>DwmSetWindowAttribute(hwnd, <span style="color: #62D99C;">38</span>, <span style="color: #62D99C;">3</span>, 4);  <span style="color: #6F7D91;">// SYSTEMBACKDROP = ACRYLIC</span></div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 20px;">
+    <div>
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: #6F7D91;">COSTO EN REPOSO</div>
+      <div style="font-size: 11px; color: #99A4B5; margin-top: 8px; line-height: 1.5;">Cero. Con el popup oculto la ventana no se compone: no hay nada que desenfocar. NFR-004 intacto.</div>
+    </div>
+    <div>
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: #6F7D91;">COSTO ABIERTO</div>
+      <div style="font-size: 11px; color: #99A4B5; margin-top: 8px; line-height: 1.5;">GPU mientras lo miras, unos segundos. Lo paga el compositor de Windows, no tu proceso.</div>
+    </div>
+    <div>
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: #6F7D91;">WINDOWS 10</div>
+      <div style="font-size: 11px; color: #99A4B5; margin-top: 8px; line-height: 1.5;">La llamada falla sin ruido y queda el fondo sólido. Se degrada solo, sin código extra.</div>
+    </div>
+  </div>
+
+  <div style="font-size: 10px; color: #6F7D91; margin-top: 20px; line-height: 1.5;">Sin verificar todavía: no lo he ejecutado con Acrylic puesto. Falta comprobar que quitar AllowsTransparency no rompa el posicionamiento junto al tray y que el texto siga legible sobre una ventana clara detrás — es el riesgo real del cristal.</div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":660,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
