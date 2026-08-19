@@ -1,5 +1,6 @@
 using System.Windows;
 using DevStatusCenter.Application.Abstractions;
+using DevStatusCenter.Application.Configuration;
 using DevStatusCenter.Application.Dashboard;
 using DevStatusCenter.Application.Forecast;
 using DevStatusCenter.Application.Power;
@@ -8,7 +9,9 @@ using DevStatusCenter.Application.Scheduling;
 using DevStatusCenter.Domain.Enums;
 using DevStatusCenter.Domain.Models;
 using DevStatusCenter.Domain.ValueObjects;
+using DevStatusCenter.Infrastructure.Configuration;
 using DevStatusCenter.Infrastructure.Persistence;
+using DevStatusCenter.Infrastructure.Security;
 using DevStatusCenter.Infrastructure.Windows;
 using DevStatusCenter.Providers.Mock;
 using DevStatusCenter.Desktop.Tray;
@@ -26,6 +29,7 @@ public partial class App : System.Windows.Application, IDisposable
     private TrayIconService? _tray;
     private DashboardWindow? _dashboardWindow;
     private QuickAccessManagerWindow? _quickAccessManager;
+    private ProviderSettingsWindow? _providerSettings;
     private bool _isDisposed;
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -43,33 +47,41 @@ public partial class App : System.Windows.Application, IDisposable
             var localRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "DevStatusCenter");
-            var connectionFactory = new SqliteConnectionFactory(Path.Combine(localRoot, "dev-status-center.db"));
+
+            // La plantilla se escribe en el primer arranque para que exista un archivo real que
+            // editar; a partir de ahi manda lo que haya en disco.
+            AppOptionsStore.EnsureTemplate(localRoot, AppOptionsStore.Defaults(localRoot));
+            var options = AppOptionsStore.Load(localRoot, out var optionsError);
+
+            var connectionFactory = new SqliteConnectionFactory(options.DatabasePath);
             _connectionFactory = connectionFactory;
             var store = new SqliteLocalStore(
                 connectionFactory,
                 new SqliteMigrationRunner(connectionFactory));
             await store.InitializeAsync(CancellationToken.None);
             var settings = new SqliteSettingsStore(connectionFactory);
+            var secrets = new DpapiSecretStore(options.SecretsPath);
             var initialMode = await ReadPowerModeAsync(settings);
             var powerManager = new PowerManager(initialMode);
             var launcher = new WindowsQuickAccessLauncher();
             var startupManager = new WindowsStartupManager();
 
-            await SeedDemoReferenceDataAsync(store);
+            await SeedDemoReferenceDataAsync(store, options.DisplayCurrency);
             await SeedQuickAccessAsync(store);
 
-            IReadOnlyList<IProvider> providers = [new MockProvider()];
+            var providers = await BuildProvidersAsync(options, secrets);
             _scheduler = new RefreshScheduler(
                 providers,
                 store,
                 powerManager,
                 TimeProvider.System,
-                displayCurrency: "USD",
-                maximumConcurrency: 3);
+                options.DisplayCurrency,
+                options.NormalConcurrency,
+                options.HistoryRetention);
             var dashboardService = new DashboardService(
                 store,
                 TimeProvider.System,
-                displayCurrency: "USD");
+                options.DisplayCurrency);
             var viewModel = new DashboardViewModel(
                 dashboardService,
                 _scheduler,
@@ -95,6 +107,28 @@ public partial class App : System.Windows.Application, IDisposable
                 _quickAccessManager.Show();
             }
 
+            void ManageProviders()
+            {
+                if (_providerSettings is { IsVisible: true })
+                {
+                    _providerSettings.Activate();
+                    return;
+                }
+
+                _dashboardWindow?.SuppressAutoHide(true);
+                _providerSettings = new ProviderSettingsWindow(
+                    options,
+                    secrets,
+                    localRoot,
+                    updated => options = updated);
+                _providerSettings.Closed += (_, _) =>
+                {
+                    _dashboardWindow?.SuppressAutoHide(false);
+                    _providerSettings = null;
+                };
+                _providerSettings.Show();
+            }
+
             _dashboardWindow = new DashboardWindow(viewModel, ManageQuickAccess);
             void ExitApplication()
             {
@@ -109,12 +143,18 @@ public partial class App : System.Windows.Application, IDisposable
                 launcher,
                 startupManager,
                 ManageQuickAccess,
+                ManageProviders,
                 ExitApplication);
 
             _scheduler.SnapshotChanged += (_, _) =>
                 _ = Dispatcher.InvokeAsync(() => _ = ReloadDashboardAsync(viewModel));
             await _scheduler.StartAsync(CancellationToken.None);
             await viewModel.LoadAsync();
+
+            if (optionsError is not null)
+            {
+                viewModel.ReportConfigurationProblem(optionsError);
+            }
         }
         catch (Exception ex)
         {
@@ -160,9 +200,54 @@ public partial class App : System.Windows.Application, IDisposable
             : PowerMode.Normal;
     }
 
-    private static Task SeedDemoReferenceDataAsync(SqliteLocalStore store)
+    /// <summary>
+    /// Instancia solo los providers habilitados en configuracion. Un provider real ademas exige
+    /// que su credencial ya exista en el secret store: habilitarlo sin token dejaria al scheduler
+    /// golpeando una API con 401 y marcando el provider en error en cada ciclo.
+    /// </summary>
+    private static async Task<IReadOnlyList<IProvider>> BuildProvidersAsync(
+        AppOptions options,
+        ISecretStore secrets)
     {
-        Budget[] budgets = [new("budget:monthly", "Monthly total", new Money(200m, "USD"))];
+        var providers = new List<IProvider>(options.Providers.Count);
+
+        if (options.IsEnabled("mock"))
+        {
+            providers.Add(new MockProvider());
+        }
+
+        // Los providers reales se registran aqui conforme se implementen. El patron queda fijado:
+        //   if (await HasCredentialAsync(options, secrets, "neon"))
+        //       providers.Add(new NeonProvider(transport, secrets, options.For("neon")));
+        _ = await HasCredentialAsync(options, secrets, "neon");
+
+        // Sin ningun provider habilitado el scheduler seguiria vivo pero nunca refrescaria, y el
+        // popup se veria vacio sin explicacion. El de demostracion mantiene el pipeline visible.
+        if (providers.Count == 0)
+        {
+            providers.Add(new MockProvider());
+        }
+
+        return providers;
+    }
+
+    private static async Task<bool> HasCredentialAsync(
+        AppOptions options,
+        ISecretStore secrets,
+        string providerId)
+    {
+        var provider = options.For(providerId);
+        if (!provider.Enabled || provider.CredentialReference is null)
+        {
+            return false;
+        }
+
+        return await secrets.GetAsync(provider.CredentialReference, CancellationToken.None) is not null;
+    }
+
+    private static Task SeedDemoReferenceDataAsync(SqliteLocalStore store, string currency)
+    {
+        Budget[] budgets = [new("budget:monthly", "Monthly total", new Money(200m, currency))];
         return store.SeedReferenceDataAsync(budgets, [], [], CancellationToken.None);
     }
 

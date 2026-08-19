@@ -21,7 +21,7 @@
 ## MVP 1 — infraestructura real
 
 1. Neon end-to-end.
-2. Editor de cuentas/credenciales.
+2. ~~Editor de cuentas/credenciales.~~ (hecho: ventana Providers & credentials)
 3. Drill-down por proyecto.
 4. Vercel end-to-end.
 5. Cloudflare end-to-end.

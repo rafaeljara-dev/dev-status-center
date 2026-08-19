@@ -20,6 +20,7 @@ public sealed class TrayIconService : IDisposable
     private readonly IQuickAccessLauncher _launcher;
     private readonly IStartupManager _startupManager;
     private readonly Action _manageQuickAccess;
+    private readonly Action _manageProviders;
     private readonly Action _exit;
     private readonly Forms.NotifyIcon _notifyIcon;
     private readonly Forms.ContextMenuStrip _menu;
@@ -35,6 +36,7 @@ public sealed class TrayIconService : IDisposable
         IQuickAccessLauncher launcher,
         IStartupManager startupManager,
         Action manageQuickAccess,
+        Action manageProviders,
         Action exit)
     {
         _window = window;
@@ -43,6 +45,7 @@ public sealed class TrayIconService : IDisposable
         _launcher = launcher;
         _startupManager = startupManager;
         _manageQuickAccess = manageQuickAccess;
+        _manageProviders = manageProviders;
         _exit = exit;
 
         _menu = new Forms.ContextMenuStrip();
@@ -60,6 +63,7 @@ public sealed class TrayIconService : IDisposable
         _quickAccessMenu = new Forms.ToolStripMenuItem("Quick access");
         _menu.Items.Add(_quickAccessMenu);
         _menu.Items.Add("Manage quick access…", null, (_, _) => _manageQuickAccess());
+        _menu.Items.Add("Providers & credentials…", null, (_, _) => _manageProviders());
         _menu.Items.Add(new Forms.ToolStripSeparator());
         var startupItem = new Forms.ToolStripMenuItem("Start with Windows")
         {

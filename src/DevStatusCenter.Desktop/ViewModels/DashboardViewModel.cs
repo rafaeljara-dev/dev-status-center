@@ -209,6 +209,12 @@ public sealed class DashboardViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Muestra en la barra de estado un problema al leer la configuracion. La aplicacion ya
+    /// arranco con valores por defecto; esto solo evita que el fallo pase inadvertido.
+    /// </summary>
+    public void ReportConfigurationProblem(string message) => StatusText = message;
+
     public async Task SetPowerModeAsync(PowerMode mode, CancellationToken cancellationToken = default)
     {
         _powerManager.SetMode(mode);

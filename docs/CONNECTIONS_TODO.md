@@ -2,14 +2,25 @@
 
 Este archivo separa el código ya listo de la información que debe agregarse después en la laptop. No pegues tokens en este documento ni en `appsettings.example.json`.
 
-## Flujo de configuración futuro
+## Flujo de configuración — ya implementado
 
-1. Abrir Settings → Providers.
-2. Elegir provider y cuenta.
-3. Ingresar token una sola vez.
-4. La UI llama `ISecretStore.SetAsync("provider-account", token)`.
-5. SQLite guarda únicamente `credential_reference`.
-6. El provider recupera el secreto justo antes del request.
+1. Clic derecho en el icono del tray → **Providers & credentials…**.
+2. Elegir el provider en la lista.
+3. Pegar el token una sola vez en el campo de contraseña.
+4. La UI llama `ISecretStore.SetAsync(credentialReference, token)`; `DpapiSecretStore` lo cifra
+   con DPAPI bajo la cuenta de Windows actual y lo escribe en `secretsPath`.
+5. `appsettings.json` guarda únicamente `credentialReference`. Ni el archivo de configuración ni
+   SQLite ven nunca el token.
+6. El provider recupera el secreto justo antes de la petición.
+
+El nombre del archivo del secreto es un hash de la referencia, así que ni siquiera el listado del
+directorio revela qué providers están configurados. La entropía de DPAPI va ligada a esa misma
+referencia: copiar el archivo de un provider sobre el de otro no permite descifrarlo.
+
+Un provider real sólo entra al ciclo de refresh si está habilitado **y** su credencial ya existe.
+Habilitarlo sin token dejaría al scheduler golpeando la API con 401 en cada ciclo.
+
+Los cambios de provider se aplican al reiniciar la aplicación.
 
 ## Matriz
 
