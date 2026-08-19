@@ -1,9 +1,11 @@
-using System.Drawing;
 using System.Runtime.Versioning;
 using DevStatusCenter.Domain.Enums;
 using Forms = System.Windows.Forms;
 
 namespace DevStatusCenter.Desktop.Tray;
+
+/// <summary>Un cuadro de la cara: la rejilla y el color con el que se pinta.</summary>
+internal sealed record FaceFrame(string[] Grid, uint Color);
 
 /// <summary>Cuanto se le permite moverse al icono.</summary>
 public enum TrayMotion
@@ -47,6 +49,7 @@ internal sealed class TrayAnimator : IDisposable
 
     private Icon? _resting;
     private Icon[]? _frames;
+    private string[][]? _frameGrids;
     private int _frameIndex;
     private bool _loops;
     private bool _syncing;
@@ -66,6 +69,15 @@ internal sealed class TrayAnimator : IDisposable
         ApplyResting();
         UpdateIdleLifeTimer();
     }
+
+    /// <summary>
+    /// El cuadro que se esta viendo ahora mismo en la bandeja. La cara del popup se engancha aqui
+    /// para mostrar exactamente lo mismo, en el mismo instante: no son dos caras parecidas, es la
+    /// misma dibujada dos veces.
+    /// </summary>
+    public FaceFrame Current { get; private set; } = new(TrayArt.EyesOpen, TrayArt.Accent(PowerMode.Normal, 0m));
+
+    public event EventHandler<FaceFrame>? FrameChanged;
 
     public TrayMotion Motion
     {
@@ -157,14 +169,13 @@ internal sealed class TrayAnimator : IDisposable
         }
 
         var meter = TrayArt.Meter(_budgetPercent, _paymentDue);
-        var mouth = Mouth();
         Play(
             [
-                TrayArt.Merge(TrayArt.EyesRight, mouth, meter),
-                TrayArt.Merge(TrayArt.EyesRight, mouth, meter),
-                TrayArt.Merge(TrayArt.EyesLeft, mouth, meter),
-                TrayArt.Merge(TrayArt.EyesLeft, mouth, meter),
-                TrayArt.Merge(TrayArt.EyesOpen, mouth, meter),
+                TrayArt.Merge(TrayArt.EyesRight, meter),
+                TrayArt.Merge(TrayArt.EyesRight, meter),
+                TrayArt.Merge(TrayArt.EyesLeft, meter),
+                TrayArt.Merge(TrayArt.EyesLeft, meter),
+                TrayArt.Merge(TrayArt.EyesOpen, meter),
             ],
             intervalMs: 120,
             loops: false);
@@ -181,10 +192,11 @@ internal sealed class TrayAnimator : IDisposable
             return;
         }
 
+        // Sin boca, el pulso es la cara apareciendo y desapareciendo sobre el medidor, que se
+        // queda quieto: lo que parpadea es la atencion, no el dato.
         var meter = TrayArt.Meter(_budgetPercent, _paymentDue);
-        var open = TrayArt.Merge(TrayArt.EyesOpen, TrayArt.MouthOpen, meter);
-        var dark = meter;
-        Play([open, open, dark, open, open, dark, open, open, open], intervalMs: 130, loops: false);
+        var open = TrayArt.Merge(TrayArt.EyesOpen, meter);
+        Play([open, open, meter, open, open, meter, open, open, open], intervalMs: 130, loops: false);
     }
 
     public void Dispose()
@@ -231,11 +243,10 @@ internal sealed class TrayAnimator : IDisposable
     private void PlayBlink()
     {
         var meter = TrayArt.Meter(_budgetPercent, _paymentDue);
-        var mouth = Mouth();
         Play(
             [
-                TrayArt.Merge(TrayArt.EyesBlink, mouth, meter),
-                TrayArt.Merge(TrayArt.EyesOpen, mouth, meter),
+                TrayArt.Merge(TrayArt.EyesBlink, meter),
+                TrayArt.Merge(TrayArt.EyesOpen, meter),
             ],
             intervalMs: 110,
             loops: false);
@@ -289,10 +300,12 @@ internal sealed class TrayAnimator : IDisposable
         }
 
         _frames = frames;
+        _frameGrids = grids;
         _frameIndex = 0;
         _loops = loops;
         _frameTimer.Interval = intervalMs;
         _notifyIcon.Icon = frames[0];
+        Publish(grids[0], color);
         _frameTimer.Start();
     }
 
@@ -318,6 +331,11 @@ internal sealed class TrayAnimator : IDisposable
         }
 
         _notifyIcon.Icon = frames[_frameIndex];
+        var grids = _frameGrids;
+        if (grids is not null)
+        {
+            Publish(grids[_frameIndex], Current.Color);
+        }
     }
 
     private void StopPlayback()
@@ -331,6 +349,7 @@ internal sealed class TrayAnimator : IDisposable
     {
         var frames = _frames;
         _frames = null;
+        _frameGrids = null;
         if (frames is null)
         {
             return;
@@ -344,47 +363,32 @@ internal sealed class TrayAnimator : IDisposable
 
     private void ApplyResting()
     {
-        var replacement = TrayIconFactory.Create(
-            TrayArt.Merge(Face(), TrayArt.Meter(_budgetPercent, _paymentDue)),
-            CurrentColor());
+        var grid = TrayArt.Merge(Face(), TrayArt.Meter(_budgetPercent, _paymentDue));
+        var color = CurrentColor();
+        var replacement = TrayIconFactory.Create(grid, color);
 
         // Se asigna antes de liberar el anterior: soltarlo mientras Windows aun lo usa deja el
         // hueco en blanco.
         _notifyIcon.Icon = replacement;
         _resting?.Dispose();
         _resting = replacement;
+        Publish(grid, color);
+    }
+
+    private void Publish(string[] grid, uint color)
+    {
+        Current = new FaceFrame(grid, color);
+        FrameChanged?.Invoke(this, Current);
     }
 
     /// <summary>La expresion es estado, no animacion: puede durar horas y no debe moverse.</summary>
-    private string[] Face()
-    {
-        var eyes = _mode == PowerMode.Paused
-            ? TrayArt.EyesSleep
-            : _providersFailing
-                ? TrayArt.EyesDead
-                : TrayArt.EyesOpen;
-        return TrayArt.Merge(eyes, Mouth());
-    }
+    private string[] Face() => _mode == PowerMode.Paused
+        ? TrayArt.EyesSleep
+        : _providersFailing
+            ? TrayArt.EyesDead
+            : TrayArt.EyesOpen;
 
-    private string[] Mouth()
-    {
-        if (_mode == PowerMode.Paused || _providersFailing)
-        {
-            return TrayArt.MouthFlat;
-        }
-
-        return _budgetPercent >= 95m ? TrayArt.MouthOpen : TrayArt.MouthSmile;
-    }
-
-    private Color CurrentColor() => _mode switch
-    {
-        PowerMode.Paused => Color.FromArgb(119, 130, 146),
-        PowerMode.Gaming => Color.FromArgb(169, 138, 244),
-        _ when _budgetPercent >= 95m => Color.FromArgb(240, 100, 100),
-        _ when _budgetPercent >= 85m => Color.FromArgb(244, 154, 90),
-        _ when _budgetPercent >= 70m => Color.FromArgb(246, 200, 95),
-        _ => Color.FromArgb(98, 217, 156)
-    };
+    private uint CurrentColor() => TrayArt.Accent(_mode, _budgetPercent);
 
     private void UpdateIdleLifeTimer()
     {

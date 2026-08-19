@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using DevStatusCenter.Desktop.Tray;
 using DevStatusCenter.Desktop.ViewModels;
 using DevStatusCenter.Desktop.Windows;
 using Forms = System.Windows.Forms;
@@ -19,6 +20,7 @@ public partial class DashboardWindow : Window
     private bool _allowClose;
     private bool _glassWanted = true;
     private bool _glassApplied;
+    private TrayAnimator? _face;
 
     public DashboardWindow(DashboardViewModel viewModel, Action manageQuickAccess)
     {
@@ -26,6 +28,19 @@ public partial class DashboardWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         _manageQuickAccess = manageQuickAccess;
+    }
+
+    /// <summary>
+    /// Engancha la carita de la primera pestaña al icono del área de notificaciones. A partir de
+    /// aquí las dos muestran el mismo cuadro en el mismo instante, porque es literalmente el
+    /// mismo: dos caras animándose por su cuenta acabarían contando cosas distintas.
+    /// </summary>
+    internal void AttachFace(TrayAnimator animator)
+    {
+        ArgumentNullException.ThrowIfNull(animator);
+        _face = animator;
+        TabFace.SetFrame(animator.Current);
+        animator.FrameChanged += OnFaceFrameChanged;
     }
 
     /// <summary>Indica si el cristal llegó a aplicarse; en Windows 10 el DWM lo rechaza.</summary>
@@ -104,9 +119,18 @@ public partial class DashboardWindow : Window
             e.Cancel = true;
             Hide();
         }
+        else if (_face is not null)
+        {
+            _face.FrameChanged -= OnFaceFrameChanged;
+            _face = null;
+        }
 
         base.OnClosing(e);
     }
+
+    // El animador vive en el hilo de la UI (sus temporizadores son de WinForms), asi que el
+    // cuadro llega ya en el hilo correcto y no hace falta marshalling.
+    private void OnFaceFrameChanged(object? sender, FaceFrame frame) => TabFace.SetFrame(frame);
 
     private void Window_Deactivated(object sender, EventArgs e)
     {

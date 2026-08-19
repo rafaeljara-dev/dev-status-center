@@ -112,12 +112,17 @@
                 CommandParameter="0"
                 ToolTip="Overview">
           <Border BorderThickness="0,0,0,2"
-                  Padding="0,3,0,8"
+                  Padding="0,2,0,6"
                   Margin="0,0,0,-1"
                   BorderBrush="{Binding SelectedTab, Converter={StaticResource TabUnderline}, ConverterParameter=0}">
-            <controls:MascotFace Width="22"
-                                 Height="22"
-                                 Foreground="{Binding SelectedTab, Converter={StaticResource TabForeground}, ConverterParameter=0}" />
+            <!--
+              La cara del popup no se dibuja: se recibe. Es el mismo cuadro que el area de
+              notificaciones esta mostrando en ese instante, solo que con celdas de 2 px.
+            -->
+            <controls:PixelFace x:Name="TabFace"
+                                Width="34"
+                                Height="34"
+                                HorizontalAlignment="Center" />
           </Border>
         </Button>
 

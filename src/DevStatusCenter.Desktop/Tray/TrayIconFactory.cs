@@ -17,16 +17,14 @@ namespace DevStatusCenter.Desktop.Tray;
 [SupportedOSPlatform("windows")]
 internal static partial class TrayIconFactory
 {
-    private static readonly Color DimCell = Color.FromArgb(255, 47, 58, 71);
-    private static readonly Color PaymentCell = Color.FromArgb(255, 246, 200, 95);
-
     /// <summary>
     /// Lo que Windows pide de verdad para el area de notificaciones. Se consulta en cada llamada
     /// porque cambia si el usuario mueve la escala de pantalla sin reiniciar la sesion.
     /// </summary>
-    public static int PreferredSize => Math.Max(TrayArt.Size, Forms.SystemInformation.SmallIconSize.Width);
+    public static int PreferredSize =>
+        Math.Max(TrayArt.Size, Forms.SystemInformation.SmallIconSize.Width);
 
-    public static Icon Create(string[] grid, Color color)
+    public static Icon Create(string[] grid, uint accent)
     {
         var size = PreferredSize;
         using var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
@@ -35,17 +33,10 @@ internal static partial class TrayIconFactory
             var row = grid[y * TrayArt.Size / size];
             for (var x = 0; x < size; x++)
             {
-                var pixel = row[x * TrayArt.Size / size] switch
+                var argb = TrayArt.CellColor(row[x * TrayArt.Size / size], accent);
+                if (argb != 0)
                 {
-                    '#' or '=' => color,
-                    '-' => DimCell,
-                    'p' => PaymentCell,
-                    _ => Color.Transparent
-                };
-
-                if (pixel.A != 0)
-                {
-                    bitmap.SetPixel(x, y, pixel);
+                    bitmap.SetPixel(x, y, Color.FromArgb(unchecked((int)argb)));
                 }
             }
         }

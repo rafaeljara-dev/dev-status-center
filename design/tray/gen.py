@@ -137,11 +137,11 @@ MOUTH_OPEN = rows(
     "....########....",
 )
 
-FACE = merge(EYES_OPEN, MOUTH_SMILE)
-FACE_BLINK = merge(EYES_BLINK, MOUTH_SMILE)
-FACE_SLEEP = merge(EYES_SLEEP, MOUTH_FLAT)
-FACE_DEAD = merge(EYES_DEAD, MOUTH_FLAT)
-FACE_SURPRISED = merge(EYES_OPEN, MOUTH_OPEN)
+# Sin boca: a 16 px la mirada sola se lee mas limpia y aguanta mejor el escalado.
+FACE = EYES_OPEN
+FACE_BLINK = EYES_BLINK
+FACE_SLEEP = EYES_SLEEP
+FACE_DEAD = EYES_DEAD
 
 
 def meter(percent, sweep=None):
@@ -329,19 +329,19 @@ def anim_glance():
     return [
         merge(FACE, METER_62),
         merge(FACE, METER_62),
-        merge(shift(EYES_OPEN, dx=1), MOUTH_SMILE, METER_62),
-        merge(shift(EYES_OPEN, dx=1), MOUTH_SMILE, METER_62),
-        merge(shift(EYES_OPEN, dx=-1), MOUTH_SMILE, METER_62),
-        merge(shift(EYES_OPEN, dx=-1), MOUTH_SMILE, METER_62),
+        merge(shift(EYES_OPEN, dx=1), METER_62),
+        merge(shift(EYES_OPEN, dx=1), METER_62),
+        merge(shift(EYES_OPEN, dx=-1), METER_62),
+        merge(shift(EYES_OPEN, dx=-1), METER_62),
         merge(FACE, METER_62),
         merge(FACE, METER_62),
     ]
 
 
 def anim_alert():
-    """Tres pulsos y se queda quieto. Es el unico momento en que el icono pide que lo mires."""
-    on = merge(FACE_SURPRISED, meter(96))
-    off = merge(EYES_OPEN, meter(96))
+    """Tres pulsos y se queda quieto. Lo que parpadea es la cara; el medidor no se mueve."""
+    on = merge(FACE, meter(96))
+    off = meter(96)
     return [on, on, off, on, on, off, on, on, on, on]
 
 
@@ -534,9 +534,9 @@ def build_main():
     W, H = 1120, 780
 
     caras = [
-        (merge(FACE, METER_62), "Normal", "Dos cuadrados de 4x4 y una sonrisa de dos filas."),
+        (merge(FACE, METER_62), "Normal", "Dos cuadrados de 4x4. Sin boca y sin contorno."),
         (merge(FACE_BLINK, METER_62), "Parpadeo", "Los ojos se cierran en chevrones hacia dentro: el &gt;_&lt; que pediste."),
-        (merge(FACE_SLEEP, METER_62), "Pausado", "Parpados a media asta y boca recta. Sin animacion."),
+        (merge(FACE_SLEEP, METER_62), "Pausado", "Parpados a media asta. Sin animacion."),
         (merge(FACE_DEAD, METER_62), "Proveedor caido", "Ojos en aspa. Estatico mientras dure el fallo."),
     ]
     cells = "".join(
@@ -579,7 +579,7 @@ def build_main():
     inner = "".join([
         heading("LA CARA · OPCION D SIN CIRCULO, CON EL MEDIDOR DE LA OPCION A"),
         prose(
-            "Sin contorno y sin nada alrededor: solo los dos cuadrados y la boca, flotando en la barra. "
+            "Sin contorno y sin nada alrededor: solo los dos cuadrados, flotando en la barra. "
             "La mitad de arriba es la personalidad; las dos filas de abajo son el dato. "
             "Las dos partes son independientes, y esa separacion es lo que deja meter gags sin perder "
             "nunca de vista el gasto."
@@ -779,7 +779,7 @@ def build_estados():
         (ACCENT, FACE, 45, "Normal", "menos del 70 %"),
         (WARN, FACE, 74, "Atencion", "70 %"),
         (HIGH, FACE, 88, "Alto", "85 %"),
-        (CRIT, FACE_SURPRISED, 97, "Critico", "95 %"),
+        (CRIT, FACE, 97, "Critico", "95 %"),
         (PAUSED, FACE_SLEEP, 45, "Pausado", "sin monitoreo"),
         (GAMING, FACE, 45, "Juego", "solo cache"),
     ]

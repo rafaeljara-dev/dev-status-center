@@ -193,6 +193,8 @@ public partial class App : System.Windows.Application, IDisposable
                 level => _ = settings.SetAsync("ui.trayMotion", level.ToString(), CancellationToken.None),
                 ExitApplication);
 
+            _dashboardWindow.AttachFace(_tray.Face);
+
             _scheduler.SnapshotChanged += (_, _) =>
                 _ = Dispatcher.InvokeAsync(() => _ = ReloadDashboardAsync(viewModel, store, _tray));
 

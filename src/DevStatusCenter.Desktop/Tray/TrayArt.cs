@@ -1,3 +1,5 @@
+using DevStatusCenter.Domain.Enums;
+
 namespace DevStatusCenter.Desktop.Tray;
 
 /// <summary>
@@ -12,7 +14,8 @@ namespace DevStatusCenter.Desktop.Tray;
 /// <c>-</c> celda apagada · <c>p</c> celda del pago proximo · <c>.</c> vacio.
 ///
 /// El icono esta partido en dos mitades con reglas distintas: las filas 1-11 son la personalidad
-/// (expresiones y gags) y las filas 12-13 son el medidor de presupuesto. Un gag ocupa la cara
+/// (expresiones y gags) y las filas 12-13 son el medidor de presupuesto. La cara son solo los
+/// ojos: sin boca, a 16 px la mirada se lee mas limpia y el dibujo aguanta mejor el escalado. Un gag ocupa la cara
 /// entera pero nunca toca esas dos filas: la broma no puede costar el dato. Las filas 0, 14 y 15
 /// se dejan vacias porque Windows recorta los bordes en algunas escalas de pantalla.
 /// </summary>
@@ -22,6 +25,32 @@ internal static class TrayArt
 
     /// <summary>Celdas del medidor. Doce es el ancho util dejando un margen de 2 px por lado.</summary>
     private const int MeterCells = 12;
+
+    // La paleta vive aqui, en ARGB crudo, porque la pintan dos sistemas de tipos distintos: el
+    // icono con System.Drawing y la cara del popup con System.Windows.Media. Tenerla una sola vez
+    // es lo que garantiza que las dos caras sean literalmente del mismo color.
+    public const uint DimCell = 0xFF2F3A47;
+    public const uint PaymentCell = 0xFFF6C85F;
+
+    /// <summary>Color de la cara segun el modo y el presupuesto. Los umbrales no han cambiado.</summary>
+    public static uint Accent(PowerMode mode, decimal budgetPercent) => mode switch
+    {
+        PowerMode.Paused => 0xFF778292,
+        PowerMode.Gaming => 0xFFA98AF4,
+        _ when budgetPercent >= 95m => 0xFFF06464,
+        _ when budgetPercent >= 85m => 0xFFF49A5A,
+        _ when budgetPercent >= 70m => 0xFFF6C85F,
+        _ => 0xFF62D99C
+    };
+
+    /// <summary>Color de una celda, o 0 si esa celda no se pinta.</summary>
+    public static uint CellColor(char cell, uint accent) => cell switch
+    {
+        '#' or '=' => accent,
+        '-' => DimCell,
+        'p' => PaymentCell,
+        _ => 0u
+    };
 
     private static readonly string[] Blank =
     [
@@ -57,18 +86,6 @@ internal static class TrayArt
     public static readonly string[] EyesLeft = Shift(EyesOpen, -1);
 
     public static readonly string[] EyesRight = Shift(EyesOpen, 1);
-
-    public static readonly string[] MouthSmile = Rows(
-        (9, "...#........#..."),
-        (10, "....########...."));
-
-    public static readonly string[] MouthFlat = Rows(
-        (9, "....########...."));
-
-    public static readonly string[] MouthOpen = Rows(
-        (9, "....########...."),
-        (10, "....#......#...."),
-        (11, "....########...."));
 
     public static readonly string[] Laptop = Rows(
         (1, "..############.."),

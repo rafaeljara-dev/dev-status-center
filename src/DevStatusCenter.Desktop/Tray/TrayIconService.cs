@@ -138,6 +138,9 @@ public sealed class TrayIconService : IDisposable, INotifier
         _powerManager.ModeChanged += OnPowerModeChanged;
     }
 
+    /// <summary>La cara que se esta mostrando, para que el popup pueda dibujar la misma.</summary>
+    internal TrayAnimator Face => _animator;
+
     /// <summary>El scheduler avisa desde su propio hilo; el llamador ya lo trae al de la UI.</summary>
     public void SetSyncing(bool syncing) => _animator.SetSyncing(syncing);
 
