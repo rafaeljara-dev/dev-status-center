@@ -4,26 +4,39 @@ using DevStatusCenter.Domain.ValueObjects;
 
 namespace DevStatusCenter.Application.Forecast;
 
-public sealed class ForecastEngine
+/// <summary>
+/// Modelo inicial: proyección lineal del consumo variable sobre el periodo de facturación,
+/// más las obligaciones fijas que caen dentro del mismo horizonte. Es una función pura; se
+/// volverá una instancia con opciones cuando llegue el modelo de media móvil (MVP 5).
+/// </summary>
+public static class ForecastEngine
 {
-    public ForecastResult Calculate(DashboardCacheData data, DateTimeOffset now)
+    public static ForecastResult Calculate(DashboardCacheData data, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(data);
 
         var currentVariable = 0m;
         var projectedVariable = 0m;
         var knownFixed = 0m;
+        var fixedServiceCost = 0m;
+        var currentTotal = 0m;
         var lines = new List<ForecastLine>(data.Services.Count);
+
+        // El horizonte se calculaba dentro del bucle, una vez por suscripción y por pago.
+        // Es el mismo valor para todos: se resuelve una sola vez.
+        var horizonEnd = data.Services.Count > 0
+            ? data.Services[0].Period.EndsAt
+            : new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(1);
 
         foreach (var item in data.Services)
         {
             EnsureCurrency(data.Currency, item.CurrentCost.Currency);
+            currentTotal += item.CurrentCost.Amount;
 
             var projected = item.Service.CostBehavior switch
             {
-                CostBehavior.Variable => ProjectVariable(item.CurrentCost.Amount, item.Period, now),
-                CostBehavior.Fixed => item.CurrentCost.Amount,
-                CostBehavior.Mixed => ProjectVariable(item.CurrentCost.Amount, item.Period, now),
+                CostBehavior.Variable or CostBehavior.Mixed =>
+                    ProjectVariable(item.CurrentCost.Amount, item.Period, now),
                 _ => item.CurrentCost.Amount
             };
 
@@ -31,6 +44,10 @@ public sealed class ForecastEngine
             {
                 currentVariable += item.CurrentCost.Amount;
                 projectedVariable += projected;
+            }
+            else if (item.Service.CostBehavior == CostBehavior.Fixed)
+            {
+                fixedServiceCost += item.CurrentCost.Amount;
             }
 
             lines.Add(new ForecastLine(
@@ -40,36 +57,44 @@ public sealed class ForecastEngine
                 projected == item.CurrentCost.Amount ? item.Accuracy : DataAccuracy.Estimated));
         }
 
-        foreach (var subscription in data.Subscriptions.Where(x => x.IsActive))
+        var linkedSubscriptionIds = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var subscription in data.Subscriptions)
         {
+            linkedSubscriptionIds.Add(subscription.Id);
+            if (!subscription.IsActive)
+            {
+                continue;
+            }
+
             EnsureCurrency(data.Currency, subscription.Price.Currency);
-            if (IsInsideCurrentServicePeriod(subscription.NextRenewalAt, data.Services, now))
+            if (IsInsideHorizon(subscription.NextRenewalAt, now, horizonEnd))
             {
                 knownFixed += subscription.Price.Amount;
             }
         }
 
-        var linkedSubscriptionIds = data.Subscriptions
-            .Select(x => x.Id)
-            .ToHashSet(StringComparer.Ordinal);
-
-        foreach (var payment in data.UpcomingPayments.Where(x => x.Status == PaymentStatus.Scheduled))
+        foreach (var payment in data.UpcomingPayments)
         {
+            if (payment.Status != PaymentStatus.Scheduled)
+            {
+                continue;
+            }
+
+            // Un pago enlazado a una suscripción ya se contó arriba: no se duplica.
             if (payment.SubscriptionId is not null && linkedSubscriptionIds.Contains(payment.SubscriptionId))
             {
                 continue;
             }
 
             EnsureCurrency(data.Currency, payment.Amount.Currency);
-            if (IsInsideCurrentServicePeriod(payment.DueAt, data.Services, now))
+            if (IsInsideHorizon(payment.DueAt, now, horizonEnd))
             {
                 knownFixed += payment.Amount.Amount;
             }
         }
 
-        var currentTotal = data.Services.Sum(x => x.CurrentCost.Amount);
-        var total = Math.Max(currentTotal, projectedVariable + knownFixed +
-            data.Services.Where(x => x.Service.CostBehavior == CostBehavior.Fixed).Sum(x => x.CurrentCost.Amount));
+        var total = Math.Max(currentTotal, projectedVariable + knownFixed + fixedServiceCost);
 
         return new ForecastResult(
             new Money(currentVariable, data.Currency),
@@ -86,26 +111,17 @@ public sealed class ForecastEngine
             return amount;
         }
 
-        var elapsedDays = Math.Max(1d, (Math.Min(now, period.EndsAt) - period.StartsAt).TotalDays);
+        var cutoff = now < period.EndsAt ? now : period.EndsAt;
+        var elapsedDays = Math.Max(1d, (cutoff - period.StartsAt).TotalDays);
         var totalDays = (period.EndsAt - period.StartsAt).TotalDays;
         var projected = amount / (decimal)elapsedDays * (decimal)totalDays;
+
+        // La proyección nunca puede quedar por debajo de lo ya gastado (FR-032).
         return decimal.Round(Math.Max(amount, projected), 2, MidpointRounding.AwayFromZero);
     }
 
-    private static bool IsInsideCurrentServicePeriod(
-        DateTimeOffset date,
-        IReadOnlyList<CachedServiceCost> services,
-        DateTimeOffset now)
-    {
-        var period = services.FirstOrDefault()?.Period;
-        if (period is null)
-        {
-            var monthEnd = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(1);
-            return date >= now && date < monthEnd;
-        }
-
-        return date >= now && date < period.EndsAt;
-    }
+    private static bool IsInsideHorizon(DateTimeOffset date, DateTimeOffset now, DateTimeOffset horizonEnd) =>
+        date >= now && date < horizonEnd;
 
     private static void EnsureCurrency(string expected, string actual)
     {
@@ -116,4 +132,3 @@ public sealed class ForecastEngine
         }
     }
 }
-

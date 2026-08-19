@@ -18,13 +18,15 @@ using DevStatusCenter.Desktop.Windows;
 
 namespace DevStatusCenter.Desktop;
 
-public partial class App : System.Windows.Application
+public partial class App : System.Windows.Application, IDisposable
 {
     private SingleInstanceGuard? _singleInstance;
+    private SqliteConnectionFactory? _connectionFactory;
     private RefreshScheduler? _scheduler;
     private TrayIconService? _tray;
     private DashboardWindow? _dashboardWindow;
     private QuickAccessManagerWindow? _quickAccessManager;
+    private bool _isDisposed;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -42,6 +44,7 @@ public partial class App : System.Windows.Application
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "DevStatusCenter");
             var connectionFactory = new SqliteConnectionFactory(Path.Combine(localRoot, "dev-status-center.db"));
+            _connectionFactory = connectionFactory;
             var store = new SqliteLocalStore(
                 connectionFactory,
                 new SqliteMigrationRunner(connectionFactory));
@@ -65,7 +68,6 @@ public partial class App : System.Windows.Application
                 maximumConcurrency: 3);
             var dashboardService = new DashboardService(
                 store,
-                new ForecastEngine(),
                 TimeProvider.System,
                 displayCurrency: "USD");
             var viewModel = new DashboardViewModel(
@@ -127,17 +129,30 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Dispose();
+        base.OnExit(e);
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
         _tray?.Dispose();
         if (_scheduler is not null)
         {
             _scheduler.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
+        _connectionFactory?.Dispose();
         _singleInstance?.Dispose();
-        base.OnExit(e);
+        GC.SuppressFinalize(this);
     }
 
-    private static async Task<PowerMode> ReadPowerModeAsync(ISettingsStore settings)
+    private static async Task<PowerMode> ReadPowerModeAsync(SqliteSettingsStore settings)
     {
         var saved = await settings.GetAsync("power.mode", CancellationToken.None);
         return Enum.TryParse<PowerMode>(saved, ignoreCase: true, out var mode)
@@ -145,7 +160,7 @@ public partial class App : System.Windows.Application
             : PowerMode.Normal;
     }
 
-    private static Task SeedDemoReferenceDataAsync(ILocalStore store)
+    private static Task SeedDemoReferenceDataAsync(SqliteLocalStore store)
     {
         Budget[] budgets = [new("budget:monthly", "Monthly total", new Money(200m, "USD"))];
         return store.SeedReferenceDataAsync(budgets, [], [], CancellationToken.None);
@@ -163,7 +178,7 @@ public partial class App : System.Windows.Application
         }
     }
 
-    private static async Task SeedQuickAccessAsync(ILocalStore store)
+    private static async Task SeedQuickAccessAsync(SqliteLocalStore store)
     {
         if ((await store.ReadQuickAccessAsync(CancellationToken.None)).Count > 0)
         {

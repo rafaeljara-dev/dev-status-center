@@ -3,8 +3,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.8" />
-    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.8" />
+    <!-- 10.0.11+ es obligatorio: 10.0.8 arrastra SQLitePCLRaw.lib.e_sqlite3 2.1.11,
+         afectado por GHSA-2m69-gcr7-jv3q (alta). 10.0.11 trae 2.1.12. -->
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.11" />
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="xunit.v3" Version="3.1.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />

@@ -4,7 +4,6 @@ namespace DevStatusCenter.Infrastructure.Persistence;
 
 public sealed class SqliteSettingsStore(SqliteConnectionFactory connectionFactory) : ISettingsStore
 {
-    private readonly SemaphoreSlim _writeGate = new(1, 1);
 
     public async Task<string?> GetAsync(string key, CancellationToken cancellationToken)
     {
@@ -17,7 +16,7 @@ public sealed class SqliteSettingsStore(SqliteConnectionFactory connectionFactor
 
     public async Task SetAsync(string key, string value, CancellationToken cancellationToken)
     {
-        await _writeGate.WaitAsync(cancellationToken);
+        await connectionFactory.EnterWriteAsync(cancellationToken);
         try
         {
             await using var connection = await connectionFactory.OpenAsync(cancellationToken);
@@ -36,7 +35,7 @@ public sealed class SqliteSettingsStore(SqliteConnectionFactory connectionFactor
         }
         finally
         {
-            _writeGate.Release();
+            connectionFactory.ExitWrite();
         }
     }
 }

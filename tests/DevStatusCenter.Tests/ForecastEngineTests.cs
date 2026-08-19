@@ -61,7 +61,7 @@ public sealed class ForecastEngineTests
             [],
             now);
 
-        var result = new ForecastEngine().Calculate(cache, now);
+        var result = ForecastEngine.Calculate(cache, now);
 
         Assert.Equal(31m, result.ProjectedVariable.Amount);
         Assert.Equal(32m, result.KnownFixed.Amount);
@@ -93,7 +93,7 @@ public sealed class ForecastEngineTests
                 [])],
             [], [], [], [], [], null);
 
-        Assert.Throws<InvalidOperationException>(() => new ForecastEngine().Calculate(cache, now));
+        Assert.Throws<InvalidOperationException>(() => ForecastEngine.Calculate(cache, now));
     }
 }
 

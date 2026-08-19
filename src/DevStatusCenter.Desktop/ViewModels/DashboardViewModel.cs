@@ -17,7 +17,9 @@ public sealed class DashboardViewModel : ObservableObject
     private readonly PowerManager _powerManager;
     private readonly IQuickAccessLauncher _quickAccessLauncher;
     private readonly ISettingsStore _settingsStore;
-    private readonly SemaphoreSlim _loadGate = new(1, 1);
+    // El gate solo hace try-acquire (nunca espera), así que un int con Interlocked cubre
+    // exactamente el mismo caso sin asignar un SemaphoreSlim ni volver disposable al VM.
+    private int _isLoading;
     private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
     private IReadOnlyList<ServiceRowViewModel> _aiServices = [];
     private IReadOnlyList<ServiceRowViewModel> _cloudServices = [];
@@ -160,7 +162,7 @@ public sealed class DashboardViewModel : ObservableObject
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!await _loadGate.WaitAsync(0, cancellationToken))
+        if (Interlocked.CompareExchange(ref _isLoading, 1, 0) != 0)
         {
             return;
         }
@@ -203,7 +205,7 @@ public sealed class DashboardViewModel : ObservableObject
         }
         finally
         {
-            _loadGate.Release();
+            Volatile.Write(ref _isLoading, 0);
         }
     }
 
@@ -285,7 +287,7 @@ public sealed class DashboardViewModel : ObservableObject
             : timestamp.ToLocalTime().ToString("MMM d", _culture);
     }
 
-    private static IReadOnlyList<QuickAccessRowViewModel> FlattenQuickAccess(
+    private static List<QuickAccessRowViewModel> FlattenQuickAccess(
         IReadOnlyList<QuickAccessEntry> entries)
     {
         var roots = entries

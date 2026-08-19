@@ -8,20 +8,11 @@ public sealed record RefreshPolicy
         TimeSpan ecoInterval,
         bool supportsManualRefresh = true)
     {
-        if (minimumInterval <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(minimumInterval));
-        }
-
-        if (normalInterval < minimumInterval)
-        {
-            throw new ArgumentOutOfRangeException(nameof(normalInterval));
-        }
-
-        if (ecoInterval < normalInterval)
-        {
-            throw new ArgumentOutOfRangeException(nameof(ecoInterval));
-        }
+        // Throw helpers en vez de if + throw: mantienen el camino feliz sin el bloque de
+        // excepción, que es lo que permite al JIT inlinear el constructor (CA1512).
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(minimumInterval, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThan(normalInterval, minimumInterval);
+        ArgumentOutOfRangeException.ThrowIfLessThan(ecoInterval, normalInterval);
 
         MinimumInterval = minimumInterval;
         NormalInterval = normalInterval;

@@ -5,7 +5,18 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+
+    <!--
+      CA1707 (sin guiones bajos en miembros) apunta a APIs públicas. En pruebas, el nombre
+      Metodo_Escenario_Resultado es la convención y vale más que la regla. Se apaga solo aquí;
+      el resto de la solución sigue con warnings-as-errors completo.
+    -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />

@@ -7,7 +7,6 @@ namespace DevStatusCenter.Application.Dashboard;
 
 public sealed class DashboardService(
     ILocalStore store,
-    ForecastEngine forecastEngine,
     TimeProvider timeProvider,
     string displayCurrency)
 {
@@ -17,7 +16,7 @@ public sealed class DashboardService(
     {
         var now = timeProvider.GetUtcNow();
         var data = await store.ReadDashboardDataAsync(displayCurrency, now, cancellationToken);
-        var forecast = forecastEngine.Calculate(data, now);
+        var forecast = ForecastEngine.Calculate(data, now);
         var forecastByService = forecast.Lines.ToDictionary(x => x.ServiceId, StringComparer.Ordinal);
 
         var services = data.Services.Select(item =>
@@ -46,7 +45,7 @@ public sealed class DashboardService(
 
         var current = new Money(services.Sum(x => x.Current.Amount), displayCurrency);
         var budget = data.Budgets.FirstOrDefault(x => x.ServiceId is null && x.Category is null)?.Limit;
-        var percent = budget is { Amount: > 0m }
+        decimal? percent = budget is { Amount: > 0m }
             ? decimal.Round(current.Amount / budget.Value.Amount * 100m, 1)
             : null;
         var stale = data.LastSuccessfulSync is null || now - data.LastSuccessfulSync > StaleAfter;

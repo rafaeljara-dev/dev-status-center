@@ -12,6 +12,17 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <!--
+      UseWindowsForms sustituye el conjunto de implicit usings del SDK por el suyo, que no
+      incluye System.IO ni System.Net.Http y sí incluye System.Windows.Forms. Eso rompe
+      Path/Directory y vuelve ambiguo MessageBox contra WPF. Se corrige aquí, una sola vez,
+      en lugar de repetir usings en cada archivo.
+    -->
+    <Using Include="System.IO" />
+    <Using Include="System.Windows.MessageBox" Alias="MessageBox" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../DevStatusCenter.Domain/DevStatusCenter.Domain.csproj" />
     <ProjectReference Include="../DevStatusCenter.Application/DevStatusCenter.Application.csproj" />
     <ProjectReference Include="../DevStatusCenter.Infrastructure/DevStatusCenter.Infrastructure.csproj" />

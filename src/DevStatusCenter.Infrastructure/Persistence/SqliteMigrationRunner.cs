@@ -55,7 +55,9 @@ public sealed class SqliteMigrationRunner(SqliteConnectionFactory connectionFact
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA temp_store = MEMORY;";
+        // journal_mode is the only pragma that persists in the database file; the per-connection
+        // ones live in SqliteConnectionFactory so every connection gets them, not just this one.
+        command.CommandText = "PRAGMA journal_mode = WAL;";
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -81,6 +83,6 @@ public sealed class SqliteMigrationRunner(SqliteConnectionFactory connectionFact
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE name = $name);";
         command.Parameters.AddWithValue("$name", name);
-        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) == 1;
+        return await command.ExecuteScalarAsync(cancellationToken) is 1L;
     }
 }

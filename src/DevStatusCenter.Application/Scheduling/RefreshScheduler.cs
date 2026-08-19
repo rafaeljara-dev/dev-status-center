@@ -105,7 +105,7 @@ public sealed class RefreshScheduler : IAsyncDisposable
         _powerManager.ModeChanged -= OnPowerModeChanged;
         await _lifetimeCts.CancelAsync();
         _commands.Writer.TryComplete();
-        _activeRefreshCts?.Cancel();
+        CancelActiveRefresh();
 
         if (_loopTask is not null)
         {
@@ -119,7 +119,7 @@ public sealed class RefreshScheduler : IAsyncDisposable
             }
         }
 
-        _activeRefreshCts?.Dispose();
+        // The active cycle disposes its own linked source in RefreshProvidersAsync.
         _lifetimeCts.Dispose();
         _concurrency.Dispose();
     }
@@ -250,6 +250,30 @@ public sealed class RefreshScheduler : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Cancels the refresh cycle that is running right now, if any. Callable from any
+    /// thread: the power-mode event fires on the UI thread while the scheduler loop owns
+    /// the cycle's lifetime.
+    /// </summary>
+    private void CancelActiveRefresh()
+    {
+        var active = Volatile.Read(ref _activeRefreshCts);
+        if (active is null)
+        {
+            return;
+        }
+
+        try
+        {
+            active.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The cycle completed between the read and the cancel. Nothing left to stop,
+            // and the scheduler loop already recorded its result.
+        }
+    }
+
     private async Task RefreshOneAsync(
         IProvider provider,
         bool isManual,
@@ -373,7 +397,7 @@ public sealed class RefreshScheduler : IAsyncDisposable
     {
         if (mode is PowerMode.Paused or PowerMode.Gaming)
         {
-            Volatile.Read(ref _activeRefreshCts)?.Cancel();
+            CancelActiveRefresh();
         }
 
         _commands.Writer.TryWrite(new PowerModeChangedCommand());

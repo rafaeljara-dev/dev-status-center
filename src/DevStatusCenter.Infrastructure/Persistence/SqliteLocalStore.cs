@@ -12,7 +12,6 @@ public sealed class SqliteLocalStore(
     SqliteConnectionFactory connectionFactory,
     SqliteMigrationRunner migrationRunner) : ILocalStore
 {
-    private readonly SemaphoreSlim _writeGate = new(1, 1);
 
     public Task InitializeAsync(CancellationToken cancellationToken) =>
         migrationRunner.RunAsync(cancellationToken);
@@ -22,7 +21,7 @@ public sealed class SqliteLocalStore(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(result);
-        await _writeGate.WaitAsync(cancellationToken);
+        await connectionFactory.EnterWriteAsync(cancellationToken);
         try
         {
             await using var connection = await connectionFactory.OpenAsync(cancellationToken);
@@ -92,7 +91,7 @@ public sealed class SqliteLocalStore(
         }
         finally
         {
-            _writeGate.Release();
+            connectionFactory.ExitWrite();
         }
     }
 
@@ -150,7 +149,7 @@ public sealed class SqliteLocalStore(
         ProviderState state,
         CancellationToken cancellationToken)
     {
-        await _writeGate.WaitAsync(cancellationToken);
+        await connectionFactory.EnterWriteAsync(cancellationToken);
         try
         {
             await using var connection = await connectionFactory.OpenAsync(cancellationToken);
@@ -185,7 +184,7 @@ public sealed class SqliteLocalStore(
         }
         finally
         {
-            _writeGate.Release();
+            connectionFactory.ExitWrite();
         }
     }
 
@@ -195,7 +194,7 @@ public sealed class SqliteLocalStore(
         IReadOnlyCollection<Payment> payments,
         CancellationToken cancellationToken)
     {
-        await _writeGate.WaitAsync(cancellationToken);
+        await connectionFactory.EnterWriteAsync(cancellationToken);
         try
         {
             await using var connection = await connectionFactory.OpenAsync(cancellationToken);
@@ -233,7 +232,7 @@ public sealed class SqliteLocalStore(
         }
         finally
         {
-            _writeGate.Release();
+            connectionFactory.ExitWrite();
         }
     }
 
@@ -248,7 +247,7 @@ public sealed class SqliteLocalStore(
         QuickAccessEntry entry,
         CancellationToken cancellationToken)
     {
-        await _writeGate.WaitAsync(cancellationToken);
+        await connectionFactory.EnterWriteAsync(cancellationToken);
         try
         {
             await using var connection = await connectionFactory.OpenAsync(cancellationToken);
@@ -281,13 +280,13 @@ public sealed class SqliteLocalStore(
         }
         finally
         {
-            _writeGate.Release();
+            connectionFactory.ExitWrite();
         }
     }
 
     public async Task DeleteQuickAccessAsync(string id, CancellationToken cancellationToken)
     {
-        await _writeGate.WaitAsync(cancellationToken);
+        await connectionFactory.EnterWriteAsync(cancellationToken);
         try
         {
             await using var connection = await connectionFactory.OpenAsync(cancellationToken);
@@ -298,7 +297,7 @@ public sealed class SqliteLocalStore(
         }
         finally
         {
-            _writeGate.Release();
+            connectionFactory.ExitWrite();
         }
     }
 
