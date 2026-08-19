@@ -16,6 +16,20 @@
 | `RefreshPolicy` | Intervalos mínimo, normal y eco |
 | `QuickAccessEntry` | Grupo, carpeta o proyecto jerárquico |
 
+## Histórico y estado vigente
+
+Las tablas se dividen por responsabilidad, no por entidad:
+
+| Tabla | Rol | Crecimiento |
+|---|---|---|
+| `usage_snapshots`, `billing_records` | Histórico append-only para gráficas y anomalías | Lineal en el tiempo, acotado por retención |
+| `current_usage`, `current_billing` | Valor vigente, única fuente del dashboard | Una fila por servicio × métrica |
+
+Ambas se escriben en la misma transacción. La proyección sólo avanza si el snapshot entrante es
+al menos tan reciente como el vigente, así que una respuesta tardía no hace retroceder la UI.
+`snapshot_id` y `record_id` son informativos: la poda del histórico no debe arrastrar la
+proyección. Ver [ADR 0005](decisions/0005-current-state-projection.md).
+
 ## Relaciones
 
 ```mermaid

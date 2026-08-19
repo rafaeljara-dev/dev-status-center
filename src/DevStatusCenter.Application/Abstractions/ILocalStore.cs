@@ -41,4 +41,13 @@ public interface ILocalStore
     Task DeleteQuickAccessAsync(
         string id,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Borra snapshots de usage/billing e historial de refresh mas viejos que
+    /// <paramref name="retention"/>. La proyeccion vigente que alimenta el dashboard no se
+    /// toca, asi que podar nunca deja la UI en blanco. Devuelve las filas eliminadas.
+    /// </summary>
+    Task<int> PruneHistoryAsync(
+        TimeSpan retention,
+        CancellationToken cancellationToken);
 }

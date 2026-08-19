@@ -26,7 +26,25 @@ RAM depende de runtime, arquitectura y publicación. Se medirá antes de fijar u
 - caché local antes de red;
 - Quick Access sin watchers.
 
-## Medición
+## Medición ya realizada
+
+### Lectura del dashboard (19-ago-2026)
+
+La consulta que resolvía el último valor por métrica usaba una función de ventana sobre el
+histórico completo. Reproducida con el volumen que genera `MockProvider` (14 filas de usage +
+5 de billing cada 15 minutos), mediana de 25 ejecuciones con caché de páginas caliente:
+
+| Histórico | Filas | Ventana sobre histórico | Proyección vigente | Factor |
+|---|---:|---:|---:|---:|
+| 7 días | 10.080 | 30,6 ms | 0,33 ms | 93× |
+| 30 días | 43.200 | **276,9 ms** | 0,18 ms | 1.562× |
+| 90 días | 129.600 | 879,9 ms | 0,31 ms | 2.825× |
+| 365 días | 525.600 | 1.377,8 ms | 0,06 ms | 21.528× |
+
+NFR-007 pide menos de 250 ms. La versión anterior lo rompía dentro del primer mes sólo por
+dejar la aplicación encendida. Ver [ADR 0005](decisions/0005-current-state-projection.md).
+
+## Medición pendiente
 
 1. Compilar Release y ejecutar la build publicada.
 2. Esperar a que termine un refresh.

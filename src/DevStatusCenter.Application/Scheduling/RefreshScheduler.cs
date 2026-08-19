@@ -27,13 +27,24 @@ public sealed class RefreshScheduler : IAsyncDisposable
     private readonly PowerManager _powerManager;
     private readonly TimeProvider _timeProvider;
     private readonly string _displayCurrency;
+    private readonly TimeSpan _historyRetention;
     private readonly SemaphoreSlim _concurrency;
     private readonly Channel<SchedulerCommand> _commands;
     private readonly CancellationTokenSource _lifetimeCts = new();
     private readonly Dictionary<string, RuntimeState> _runtime = new(StringComparer.Ordinal);
     private CancellationTokenSource? _activeRefreshCts;
     private Task? _loopTask;
+    private DateTimeOffset _nextPruneAt;
     private bool _disposed;
+
+    /// <summary>Mantenimiento del historico: como mucho una vez al dia.</summary>
+    private static readonly TimeSpan PruneInterval = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Retraso antes de la primera poda. El arranque debe llegar al tray sin tocar disco
+    /// mas de lo imprescindible; la limpieza puede esperar a que la sesion se asiente.
+    /// </summary>
+    private static readonly TimeSpan FirstPruneDelay = TimeSpan.FromMinutes(5);
 
     public RefreshScheduler(
         IReadOnlyList<IProvider> providers,
@@ -41,7 +52,8 @@ public sealed class RefreshScheduler : IAsyncDisposable
         PowerManager powerManager,
         TimeProvider timeProvider,
         string displayCurrency,
-        int maximumConcurrency = 3)
+        int maximumConcurrency = 3,
+        TimeSpan? historyRetention = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(maximumConcurrency, 1);
         _providers = providers;
@@ -49,6 +61,10 @@ public sealed class RefreshScheduler : IAsyncDisposable
         _powerManager = powerManager;
         _timeProvider = timeProvider;
         _displayCurrency = displayCurrency;
+
+        // 400 dias cubren las comparativas de 12 meses que pide el roadmap con margen para
+        // periodos de facturacion desfasados, sin dejar crecer el archivo sin limite.
+        _historyRetention = historyRetention ?? TimeSpan.FromDays(400);
         _concurrency = new SemaphoreSlim(maximumConcurrency, maximumConcurrency);
         _commands = Channel.CreateUnbounded<SchedulerCommand>(new UnboundedChannelOptions
         {
@@ -70,6 +86,7 @@ public sealed class RefreshScheduler : IAsyncDisposable
         }
 
         var now = _timeProvider.GetUtcNow();
+        _nextPruneAt = now + FirstPruneDelay;
         foreach (var provider in _providers)
         {
             var persisted = await _store.ReadProviderStateAsync(provider.Descriptor.Id, cancellationToken);
@@ -146,6 +163,10 @@ public sealed class RefreshScheduler : IAsyncDisposable
                 await RefreshProvidersAsync(due, isManual: false, cancellationToken);
                 continue;
             }
+
+            // El scheduler ya no tiene refrescos pendientes: es el momento barato para la
+            // limpieza del historico.
+            await PruneHistoryIfDueAsync(now, cancellationToken);
 
             var nextDue = _runtime.Count == 0
                 ? now.AddHours(24)
@@ -229,6 +250,29 @@ public sealed class RefreshScheduler : IAsyncDisposable
             RefreshRequestStatus.Completed,
             eligible.Length,
             $"Refreshed {eligible.Length} provider(s)."));
+    }
+
+    private async Task PruneHistoryIfDueAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (now < _nextPruneAt)
+        {
+            return;
+        }
+
+        _nextPruneAt = now + PruneInterval;
+        try
+        {
+            await _store.PruneHistoryAsync(_historyRetention, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Apagado o pausa durante la limpieza. Se reintenta en el proximo ciclo.
+        }
+        catch (Exception)
+        {
+            // El mantenimiento nunca debe tumbar el loop: el historico crecera un dia mas y
+            // el siguiente intento lo recorta.
+        }
     }
 
     private async Task RefreshProvidersAsync(

@@ -284,6 +284,37 @@ public sealed class SqliteLocalStore(
         }
     }
 
+    public async Task<int> PruneHistoryAsync(TimeSpan retention, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(retention, TimeSpan.Zero);
+        var cutoff = SqliteValue.Instant(DateTimeOffset.UtcNow - retention);
+
+        await connectionFactory.EnterWriteAsync(cancellationToken);
+        try
+        {
+            await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+            await using var transaction = connection.BeginTransaction();
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+
+            // current_usage / current_billing no se tocan: son la proyeccion vigente y deben
+            // sobrevivir aunque el snapshot que las origino ya no exista.
+            command.CommandText = """
+                DELETE FROM usage_snapshots WHERE captured_at_ms < $cutoff;
+                DELETE FROM billing_records WHERE captured_at_ms < $cutoff;
+                DELETE FROM refresh_history WHERE completed_at_ms < $cutoff;
+                """;
+            command.Parameters.AddWithValue("$cutoff", cutoff);
+            var removed = await command.ExecuteNonQueryAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return removed;
+        }
+        finally
+        {
+            connectionFactory.ExitWrite();
+        }
+    }
+
     public async Task DeleteQuickAccessAsync(string id, CancellationToken cancellationToken)
     {
         await connectionFactory.EnterWriteAsync(cancellationToken);
@@ -378,6 +409,8 @@ public sealed class SqliteLocalStore(
     {
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
+        // Dos sentencias en un solo comando y un solo binding de parametros: la fila
+        // historica y la proyeccion vigente que lee el dashboard.
         command.CommandText = """
             INSERT INTO usage_snapshots(
                 id, service_id, metric_code, metric_name, metric_kind, unit,
@@ -387,6 +420,27 @@ public sealed class SqliteLocalStore(
                     $value, $capturedAt, $periodStart, $periodEnd,
                     $timeZone, $source, $accuracy)
             ON CONFLICT(id) DO NOTHING;
+
+            INSERT INTO current_usage(
+                service_id, metric_code, snapshot_id, metric_name, metric_kind, unit,
+                value_decimal, captured_at_ms, period_start_ms, period_end_ms,
+                period_time_zone, source, accuracy)
+            VALUES ($serviceId, $code, $id, $name, $kind, $unit,
+                    $value, $capturedAt, $periodStart, $periodEnd,
+                    $timeZone, $source, $accuracy)
+            ON CONFLICT(service_id, metric_code) DO UPDATE SET
+                snapshot_id = excluded.snapshot_id,
+                metric_name = excluded.metric_name,
+                metric_kind = excluded.metric_kind,
+                unit = excluded.unit,
+                value_decimal = excluded.value_decimal,
+                captured_at_ms = excluded.captured_at_ms,
+                period_start_ms = excluded.period_start_ms,
+                period_end_ms = excluded.period_end_ms,
+                period_time_zone = excluded.period_time_zone,
+                source = excluded.source,
+                accuracy = excluded.accuracy
+            WHERE excluded.captured_at_ms >= current_usage.captured_at_ms;
             """;
         command.Parameters.AddWithValue("$id", snapshot.Id);
         command.Parameters.AddWithValue("$serviceId", snapshot.ServiceId);
@@ -421,6 +475,25 @@ public sealed class SqliteLocalStore(
                     $periodStart, $periodEnd, $timeZone,
                     $source, $accuracy, $invoiceId)
             ON CONFLICT(id) DO NOTHING;
+
+            INSERT INTO current_billing(
+                service_id, currency, record_id, amount_decimal, captured_at_ms,
+                period_start_ms, period_end_ms, period_time_zone,
+                source, accuracy, external_invoice_id)
+            VALUES ($serviceId, $currency, $id, $amount, $capturedAt,
+                    $periodStart, $periodEnd, $timeZone,
+                    $source, $accuracy, $invoiceId)
+            ON CONFLICT(service_id, currency) DO UPDATE SET
+                record_id = excluded.record_id,
+                amount_decimal = excluded.amount_decimal,
+                captured_at_ms = excluded.captured_at_ms,
+                period_start_ms = excluded.period_start_ms,
+                period_end_ms = excluded.period_end_ms,
+                period_time_zone = excluded.period_time_zone,
+                source = excluded.source,
+                accuracy = excluded.accuracy,
+                external_invoice_id = excluded.external_invoice_id
+            WHERE excluded.captured_at_ms >= current_billing.captured_at_ms;
             """;
         command.Parameters.AddWithValue("$id", record.Id);
         command.Parameters.AddWithValue("$serviceId", record.ServiceId);
@@ -555,18 +628,13 @@ public sealed class SqliteLocalStore(
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
+        // Escaneo de una tabla con una fila por (servicio, metrica): su tamano depende de
+        // cuantos servicios hay, no de cuanto historico se acumulo.
         command.CommandText = """
-            WITH ranked AS (
-                SELECT *, ROW_NUMBER() OVER (
-                    PARTITION BY service_id, metric_code
-                    ORDER BY captured_at_ms DESC) AS row_number
-                FROM usage_snapshots
-            )
-            SELECT id, service_id, metric_code, metric_name, metric_kind, unit,
+            SELECT snapshot_id, service_id, metric_code, metric_name, metric_kind, unit,
                    value_decimal, captured_at_ms, period_start_ms, period_end_ms,
                    period_time_zone, source, accuracy
-            FROM ranked
-            WHERE row_number = 1;
+            FROM current_usage;
             """;
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var rows = new Dictionary<string, List<UsageSnapshot>>(StringComparer.Ordinal);
@@ -613,20 +681,13 @@ public sealed class SqliteLocalStore(
     {
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            WITH ranked AS (
-                SELECT *, ROW_NUMBER() OVER (
-                    PARTITION BY service_id
-                    ORDER BY captured_at_ms DESC) AS row_number
-                FROM billing_records
-                WHERE currency = $currency
-            )
             SELECT s.id, s.provider_id, s.provider_account_id, s.external_id,
                    s.name, s.category, s.cost_behavior, s.is_enabled,
                    b.amount_decimal, b.currency, b.captured_at_ms,
                    b.period_start_ms, b.period_end_ms, b.period_time_zone,
                    b.source, b.accuracy
             FROM services s
-            JOIN ranked b ON b.service_id = s.id AND b.row_number = 1
+            JOIN current_billing b ON b.service_id = s.id AND b.currency = $currency
             WHERE s.is_enabled = 1
             ORDER BY s.category, CAST(b.amount_decimal AS REAL) DESC;
             """;

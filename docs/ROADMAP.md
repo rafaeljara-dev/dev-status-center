@@ -13,6 +13,8 @@
 - [x] forecast inicial;
 - [x] Quick Access jerárquico;
 - [x] pruebas y CI;
+- [x] compilar y pasar pruebas en .NET 10;
+- [x] proyección de estado vigente + retención del histórico;
 - [ ] ejecutar y medir en Windows real;
 - [ ] capturar screenshot y baseline de performance.
 
