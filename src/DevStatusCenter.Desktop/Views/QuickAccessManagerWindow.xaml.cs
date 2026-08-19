@@ -21,7 +21,7 @@ public partial class QuickAccessManagerWindow : Window
         KindBox.ItemsSource = Enum.GetValues<QuickAccessKind>();
         ActionBox.ItemsSource = Enum.GetValues<QuickAccessAction>();
         KindBox.SelectedItem = QuickAccessKind.Project;
-        ActionBox.SelectedItem = QuickAccessAction.Editor;
+        ActionBox.SelectedItem = QuickAccessAction.Explorer;
         Loaded += async (_, _) => await ReloadAsync();
     }
 
@@ -150,7 +150,7 @@ public partial class QuickAccessManagerWindow : Window
         PathBox.Clear();
         ParentBox.SelectedItem = null;
         KindBox.SelectedItem = QuickAccessKind.Project;
-        ActionBox.SelectedItem = QuickAccessAction.Editor;
+        ActionBox.SelectedItem = QuickAccessAction.Explorer;
         MessageText.Text = string.Empty;
         RefreshParents();
     }

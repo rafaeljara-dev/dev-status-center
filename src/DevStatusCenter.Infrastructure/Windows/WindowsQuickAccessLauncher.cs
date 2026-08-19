@@ -40,11 +40,36 @@ public sealed class WindowsQuickAccessLauncher(string editorExecutable = "code")
         return Task.CompletedTask;
     }
 
-    private static ProcessStartInfo CreateExplorerStartInfo(string path) => new()
+    /// <summary>
+    /// Abre el Explorador de forma explicita.
+    ///
+    /// Antes esto era <c>FileName = path</c> con <c>UseShellExecute = true</c>, que delega en el
+    /// handler que Windows tenga registrado para la clase Directory. Visual Studio y otros IDE se
+    /// apropian de esa asociacion, asi que "abrir la carpeta" terminaba abriendo un IDE. Invocar
+    /// explorer.exe directamente hace que la accion signifique siempre lo mismo.
+    ///
+    /// Un archivo se revela dentro de su carpeta con /select en lugar de ejecutarse: abrir un
+    /// .exe o un .ps1 anclado por accidente seria un resultado bastante peor que verlo.
+    /// </summary>
+    private static ProcessStartInfo CreateExplorerStartInfo(string path)
     {
-        FileName = path,
-        UseShellExecute = true
-    };
+        var info = new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            UseShellExecute = false
+        };
+
+        if (Directory.Exists(path))
+        {
+            info.ArgumentList.Add(path);
+            return info;
+        }
+
+        // Forma documentada de /select: un unico argumento con la ruta entrecomillada. Windows no
+        // admite comillas dobles en una ruta, asi que no hay nada que escapar.
+        info.Arguments = $"/select,\"{path}\"";
+        return info;
+    }
 
     private static ProcessStartInfo CreateArgumentStartInfo(string executable, params string[] arguments)
     {
