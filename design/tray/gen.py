@@ -80,10 +80,7 @@ def shift(grid, dy=0, dx=0):
 # --------------------------------------------------------------------------------------
 
 EYES_OPEN = rows(
-    "................",
-    "................",
-    "................",
-    "................",
+    *["." * 16] * 6,
     "..####....####..",
     "..####....####..",
     "..####....####..",
@@ -91,10 +88,7 @@ EYES_OPEN = rows(
 )
 
 EYES_BLINK = rows(
-    "................",
-    "................",
-    "................",
-    "................",
+    *["." * 16] * 6,
     "..##........##..",
     "...##......##...",
     "...##......##...",
@@ -102,20 +96,13 @@ EYES_BLINK = rows(
 )
 
 EYES_SLEEP = rows(
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
+    *["." * 16] * 7,
     "..####....####..",
     "..####....####..",
 )
 
 EYES_DEAD = rows(
-    "................",
-    "................",
-    "................",
-    "................",
+    *["." * 16] * 6,
     "..#..#....#..#..",
     "...##......##...",
     "...##......##...",
@@ -148,22 +135,11 @@ FACE_DEAD = EYES_DEAD
 
 
 def meter(percent, sweep=None):
-    """Las dos filas de abajo. Doce celdas: es el medidor del popup, reducido a la bandeja."""
-    cells = 14
-    lit = round(max(0.0, min(100.0, percent)) / 100 * cells)
-    line = []
-    for i in range(cells):
-        if sweep is not None and sweep <= i < sweep + 2:
-            line.append("=")
-        elif sweep is not None:
-            line.append("-")
-        else:
-            line.append("=" if i < lit else "-")
-    body = "." + "".join(line) + "."
-    return rows(*["." * 16] * 14, body)
+    """Ya no existe: el presupuesto lo dice el color del icono, no una fila de celdas."""
+    return EMPTY
 
 
-BASE = merge(FACE, meter(62))
+BASE = FACE
 
 
 # --------------------------------------------------------------------------------------
@@ -298,7 +274,7 @@ OLD_MARKS = [
 # Animaciones
 # --------------------------------------------------------------------------------------
 
-METER_62 = meter(62)
+METER_62 = EMPTY
 
 
 def with_meter(face_frames, meter_grid=None):

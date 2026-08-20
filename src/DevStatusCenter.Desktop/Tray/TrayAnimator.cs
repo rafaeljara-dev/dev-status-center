@@ -45,7 +45,6 @@ internal sealed class TrayAnimator : IDisposable
     private PowerMode _mode = PowerMode.Normal;
     private decimal _budgetPercent;
     private bool _providersFailing;
-    private bool _paymentDue;
 
     private Icon? _resting;
     private Icon[]? _frames;
@@ -99,17 +98,15 @@ internal sealed class TrayAnimator : IDisposable
         }
     }
 
-    /// <summary>Estado permanente: expresion, color y medidor. No es una animacion.</summary>
-    public void SetState(PowerMode mode, decimal budgetPercent, bool providersFailing, bool paymentDue)
+    /// <summary>Estado permanente: expresion y color. No es una animacion.</summary>
+    public void SetState(PowerMode mode, decimal budgetPercent, bool providersFailing)
     {
         var changed = _mode != mode
             || _budgetPercent != budgetPercent
-            || _providersFailing != providersFailing
-            || _paymentDue != paymentDue;
+            || _providersFailing != providersFailing;
         _mode = mode;
         _budgetPercent = budgetPercent;
         _providersFailing = providersFailing;
-        _paymentDue = paymentDue;
         if (changed)
         {
             ApplyResting();
@@ -128,7 +125,11 @@ internal sealed class TrayAnimator : IDisposable
         ApplyResting();
     }
 
-    /// <summary>Barrido mientras el scheduler consulta a los proveedores.</summary>
+    /// <summary>
+    /// Mientras el scheduler consulta a los proveedores, la cara mira de un lado a otro. Antes
+    /// era un barrido en la fila del medidor; sin medidor, el unico sitio donde queda algo que
+    /// mover son los ojos, y "buscando" es exactamente lo que esta pasando.
+    /// </summary>
     public void SetSyncing(bool syncing)
     {
         if (_syncing == syncing)
@@ -148,13 +149,17 @@ internal sealed class TrayAnimator : IDisposable
             return;
         }
 
-        var frames = new List<string[]>();
-        for (var head = -2; head < 12; head++)
-        {
-            frames.Add(TrayArt.Merge(Face(), TrayArt.MeterSweep(head, _paymentDue)));
-        }
-
-        Play(frames.ToArray(), intervalMs: 110, loops: true);
+        Play(
+            [
+                TrayArt.EyesOpen,
+                TrayArt.EyesRight,
+                TrayArt.EyesRight,
+                TrayArt.EyesOpen,
+                TrayArt.EyesLeft,
+                TrayArt.EyesLeft,
+            ],
+            intervalMs: 160,
+            loops: true);
     }
 
     /// <summary>
@@ -168,14 +173,13 @@ internal sealed class TrayAnimator : IDisposable
             return;
         }
 
-        var meter = TrayArt.Meter(_budgetPercent, _paymentDue);
         Play(
             [
-                TrayArt.Merge(TrayArt.EyesRight, meter),
-                TrayArt.Merge(TrayArt.EyesRight, meter),
-                TrayArt.Merge(TrayArt.EyesLeft, meter),
-                TrayArt.Merge(TrayArt.EyesLeft, meter),
-                TrayArt.Merge(TrayArt.EyesOpen, meter),
+                TrayArt.EyesRight,
+                TrayArt.EyesRight,
+                TrayArt.EyesLeft,
+                TrayArt.EyesLeft,
+                TrayArt.EyesOpen,
             ],
             intervalMs: 120,
             loops: false);
@@ -192,11 +196,17 @@ internal sealed class TrayAnimator : IDisposable
             return;
         }
 
-        // Sin boca, el pulso es la cara apareciendo y desapareciendo sobre el medidor, que se
-        // queda quieto: lo que parpadea es la atencion, no el dato.
-        var meter = TrayArt.Meter(_budgetPercent, _paymentDue);
-        var open = TrayArt.Merge(TrayArt.EyesOpen, meter);
-        Play([open, open, meter, open, open, meter, open, open, open], intervalMs: 130, loops: false);
+        // El pulso es la cara apareciendo y desapareciendo. Sin nada mas en el lienzo, encender
+        // y apagar es la senal mas fuerte que caben en 16x16.
+        var blank = TrayArt.Blank;
+        Play(
+            [
+                TrayArt.EyesOpen, TrayArt.EyesOpen, blank,
+                TrayArt.EyesOpen, TrayArt.EyesOpen, blank,
+                TrayArt.EyesOpen, TrayArt.EyesOpen, TrayArt.EyesOpen
+            ],
+            intervalMs: 130,
+            loops: false);
     }
 
     public void Dispose()
@@ -242,12 +252,11 @@ internal sealed class TrayAnimator : IDisposable
 
     private void PlayBlink()
     {
-        var meter = TrayArt.Meter(_budgetPercent, _paymentDue);
         Play(
             [
-                TrayArt.Merge(TrayArt.EyesBlink, meter),
-                TrayArt.Merge(TrayArt.EyesBlink, meter),
-                TrayArt.Merge(TrayArt.EyesOpen, meter),
+                TrayArt.EyesBlink,
+                TrayArt.EyesBlink,
+                TrayArt.EyesOpen,
             ],
             intervalMs: 90,
             loops: false);
@@ -265,26 +274,22 @@ internal sealed class TrayAnimator : IDisposable
         _lastGagIndex = index;
 
         var gag = TrayArt.Gags[index];
-        var meter = TrayArt.Meter(_budgetPercent, _paymentDue);
         var frames = new List<string[]>();
 
         // Entra desde abajo, se queda algo mas de medio segundo y baja. El medidor no se mueve.
         foreach (var dy in (int[])[10, 6, 3, 0])
         {
-            frames.Add(TrayArt.Merge(TrayArt.Shift(gag, dy: dy), meter));
+            frames.Add(TrayArt.Shift(gag, dy: dy));
         }
 
-        var hold = ReferenceEquals(gag, TrayArt.Coffee)
+        var hold = ReferenceEquals(gag, TrayArt.Gags[1])
             ? (string[][])[TrayArt.Coffee, TrayArt.CoffeeSteam, TrayArt.Coffee, TrayArt.CoffeeSteam]
             : [gag, gag, gag, gag];
-        foreach (var frame in hold)
-        {
-            frames.Add(TrayArt.Merge(frame, meter));
-        }
+        frames.AddRange(hold);
 
         foreach (var dy in (int[])[3, 6, 10])
         {
-            frames.Add(TrayArt.Merge(TrayArt.Shift(gag, dy: dy), meter));
+            frames.Add(TrayArt.Shift(gag, dy: dy));
         }
 
         Play(frames.ToArray(), intervalMs: 140, loops: false);
@@ -364,7 +369,7 @@ internal sealed class TrayAnimator : IDisposable
 
     private void ApplyResting()
     {
-        var grid = TrayArt.Merge(Face(), TrayArt.Meter(_budgetPercent, _paymentDue));
+        var grid = Face();
         var color = CurrentColor();
         var replacement = TrayIconFactory.Create(grid, color);
 

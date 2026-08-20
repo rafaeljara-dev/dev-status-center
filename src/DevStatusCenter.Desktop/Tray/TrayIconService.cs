@@ -14,9 +14,6 @@ namespace DevStatusCenter.Desktop.Tray;
 [SupportedOSPlatform("windows")]
 public sealed class TrayIconService : IDisposable, INotifier
 {
-    /// <summary>Ventana de aviso de pago: la misma que usa el evaluador de alertas.</summary>
-    private static readonly TimeSpan PaymentHorizon = TimeSpan.FromDays(3);
-
     /// <summary>
     /// Un fallo aislado se recupera solo en el siguiente ciclo; poner cara de muerto por eso
     /// seria alarmismo. Tres seguidos es el mismo umbral con el que ya se notifica.
@@ -201,14 +198,11 @@ public sealed class TrayIconService : IDisposable, INotifier
 
     private void OnSnapshotApplied(object? sender, DashboardSnapshot snapshot)
     {
-        var now = DateTimeOffset.UtcNow;
-        var paymentDue = snapshot.UpcomingPayments.Any(x => x.DueAt - now <= PaymentHorizon);
         RebuildQuickAccess(snapshot.QuickAccess);
         _animator.SetState(
             _powerManager.Mode,
             snapshot.BudgetPercent ?? 0m,
-            snapshot.ProviderStates.Any(x => x.ConsecutiveFailures >= FailuresBeforeSadFace),
-            paymentDue);
+            snapshot.ProviderStates.Any(x => x.ConsecutiveFailures >= FailuresBeforeSadFace));
 
         // La mirada solo tiene sentido si el refresh trajo algo distinto: repetirla en cada ciclo
         // la convertiria en ruido y dejaria de significar "hay novedades".
