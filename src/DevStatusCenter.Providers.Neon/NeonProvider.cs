@@ -86,7 +86,7 @@ public sealed class NeonProvider : IProvider, IUsageProvider, IBillingProvider
         var period = CurrentMonth(context.RequestedAt);
 
         var projects = await ReadProjectsAsync(organization.Id, token, cancellationToken);
-        var consumption = await ReadConsumptionAsync(organization.Id, period, context.RequestedAt, token, cancellationToken);
+        var consumption = await ReadConsumptionAsync(organization.Id, period, token, cancellationToken);
 
         var account = new ProviderAccount(
             AccountIdFor(organization.Id),
@@ -95,30 +95,37 @@ public sealed class NeonProvider : IProvider, IUsageProvider, IBillingProvider
             organization.Id,
             _options.CredentialReference);
 
-        var observations = new List<ServiceObservation>(projects.Count);
-        foreach (var (projectId, projectName) in projects)
+        // Una sola fila para toda la organización, no una por proyecto. Con dieciocho proyectos,
+        // desglosar convierte el popup en una lista que hay que leer entera para saber lo único
+        // que se pregunta de un vistazo: cuánto va este mes. El desglose por proyecto está
+        // anotado como posible paso siguiente en CLAUDE.md.
+        //
+        // La franquicia de salida pública es por proyecto, así que se aplica antes de sumar: si
+        // se sumara primero, dieciocho franquicias de 500 GB se volverían una sola y aparecería
+        // un cargo de red que Neon no cobra.
+        var total = NeonBillableUnits.Empty;
+        foreach (var (projectId, _) in projects)
         {
-            // Un proyecto sin consumo en el periodo sigue apareciendo, con ceros. Omitirlo lo
-            // haría desaparecer del dashboard y parecería que se borró.
             var units = consumption.TryGetValue(projectId, out var raw)
                 ? NeonBillableUnits.FromRawMetrics(raw)
-                : NeonBillableUnits.FromRawMetrics(new Dictionary<string, decimal>(StringComparer.Ordinal));
-
-            observations.Add(BuildObservation(
-                account.Id,
-                projectId,
-                projectName,
-                units,
-                pricing,
-                context.RequestedAt,
-                period));
+                : NeonBillableUnits.Empty;
+            total = total.Add(units.WithFreeTransferApplied(pricing));
         }
+
+        var observation = BuildObservation(
+            account.Id,
+            organization.Id,
+            "Neon",
+            total,
+            pricing,
+            context.RequestedAt,
+            period);
 
         return new ProviderRefreshResult(
             ProviderId,
             context.RequestedAt,
             [account],
-            observations,
+            [observation],
             [],
             []);
     }
@@ -229,7 +236,6 @@ public sealed class NeonProvider : IProvider, IUsageProvider, IBillingProvider
     private async Task<Dictionary<string, Dictionary<string, decimal>>> ReadConsumptionAsync(
         string organizationId,
         BillingPeriod period,
-        DateTimeOffset until,
         string token,
         CancellationToken cancellationToken)
     {
@@ -241,7 +247,12 @@ public sealed class NeonProvider : IProvider, IUsageProvider, IBillingProvider
             var query = new QueryBuilder()
                 .Add("org_id", organizationId)
                 .Add("from", Rfc3339(period.StartsAt))
-                .Add("to", Rfc3339(until < period.EndsAt ? until : period.EndsAt))
+                // El "to" es siempre el fin del periodo, nunca "ahora". Con granularidad mensual
+                // Neon trunca ambos extremos al inicio de su mes, asi que recortar a hoy hacia
+                // que "from" y "to" cayeran en el mismo instante y la API respondia 400 con
+                // "'from' must be before 'to'". Pedir el mes entero devuelve el consumo hasta la
+                // fecha igual: la API no rellena el futuro.
+                .Add("to", Rfc3339(period.EndsAt))
                 .Add("granularity", "monthly")
                 .Add("limit", PageSize.ToString(CultureInfo.InvariantCulture))
                 .Add("cursor", cursor);

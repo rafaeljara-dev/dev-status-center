@@ -52,6 +52,10 @@ public partial class App : System.Windows.Application, IDisposable
         // Es lo que convierte "esperemos que la ventana abra" en un hecho comprobado, tanto en
         // CI como antes de entregar una build.
         var selfTest = e.Args.Contains("--selftest", StringComparer.OrdinalIgnoreCase);
+
+        // --console: imprime en la terminal lo mismo que muestra el popup y sale. Permite ver el
+        // efecto de un cambio con datos reales sin publicar ni instalar.
+        var consoleMode = e.Args.Contains("--console", StringComparer.OrdinalIgnoreCase);
         if (selfTest)
         {
             _bindingErrors = BindingErrorListener.Attach();
@@ -216,6 +220,12 @@ public partial class App : System.Windows.Application, IDisposable
             await viewModel.RestoreTabAsync(CancellationToken.None);
             await viewModel.LoadAsync();
 
+            if (consoleMode)
+            {
+                await RunConsoleAsync(viewModel);
+                return;
+            }
+
             if (optionsError is not null)
             {
                 viewModel.ReportConfigurationProblem(optionsError);
@@ -235,6 +245,34 @@ public partial class App : System.Windows.Application, IDisposable
                 MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    /// <summary>
+    /// Fuerza un refresh, imprime el resultado en la terminal y sale. Refresca a proposito: el
+    /// sentido de este modo es ver el dato de ahora, no el que quedo en cache la ultima vez.
+    /// </summary>
+    private async Task RunConsoleAsync(DashboardViewModel viewModel)
+    {
+        ConsoleReport.Attach();
+        try
+        {
+            var result = await _scheduler!.RequestRefreshAsync();
+            await viewModel.LoadAsync();
+            if (viewModel.Snapshot is { } snapshot)
+            {
+                ConsoleReport.Write(snapshot, System.Globalization.CultureInfo.CurrentCulture);
+            }
+
+            Console.WriteLine($"  {result.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex);
+            Shutdown(1);
+            return;
+        }
+
+        Shutdown(0);
     }
 
     /// <summary>

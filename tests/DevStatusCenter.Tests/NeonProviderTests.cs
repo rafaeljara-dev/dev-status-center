@@ -83,10 +83,11 @@ public sealed class NeonProviderTests
         Assert.Equal("org-happy-lab-12345678", account.ExternalAccountId);
         Assert.Equal(Reference, account.CredentialReference);
 
-        // Un proyecto sin consumo no desaparece del dashboard.
-        Assert.Equal(2, result.Observations.Count);
-
-        var alpha = result.Observations.Single(x => x.Service.ExternalId == "proj-alpha-1111");
+        // Neon se presenta como una sola fila con todo sumado, no una por proyecto: con dieciocho
+        // proyectos el desglose convierte el popup en una lista. El dato por proyecto sigue
+        // pidiéndose y llegando; lo que se agrega es la presentación.
+        var alpha = Assert.Single(result.Observations);
+        Assert.Equal("Neon", alpha.Service.Name);
         Assert.Equal(ServiceCategory.Infrastructure, alpha.Service.Category);
         Assert.Equal(CostBehavior.Variable, alpha.Service.CostBehavior);
 
@@ -125,7 +126,12 @@ public sealed class NeonProviderTests
         var query = Uri.UnescapeDataString(consumption.Query);
 
         Assert.Contains("from=2026-08-01T00:00:00Z", query, StringComparison.Ordinal);
-        Assert.Contains("to=2026-08-19T12:00:00Z", query, StringComparison.Ordinal);
+
+        // El "to" es el fin del periodo, no el instante del refresh. Con granularidad mensual
+        // Neon trunca los dos extremos al inicio de su mes: recortar a "ahora" hacia que from y
+        // to cayeran en el mismo instante y la API devolvia 400. Esta linea es la que impide que
+        // esa optimizacion aparentemente inofensiva vuelva a entrar.
+        Assert.Contains("to=2026-09-01T00:00:00Z", query, StringComparison.Ordinal);
         Assert.Contains("org_id=org-happy-lab-12345678", query, StringComparison.Ordinal);
         Assert.All(
             NeonBillableUnits.RequestedMetrics,
@@ -183,7 +189,7 @@ public sealed class NeonProviderTests
         var result = await provider.RefreshAsync(Context(), CancellationToken.None);
 
         Assert.Equal(2, handler.HitsFor("users/me/organizations"));
-        Assert.Equal(2, result.Observations.Count);
+        Assert.Single(result.Observations);
     }
 
     [Fact]
@@ -255,11 +261,20 @@ public sealed class NeonProviderTests
             ["public_network_transfer_bytes"] = 600_000_000_000m   // 600 GB
         });
 
+        // La franquicia se descuenta antes de sumar proyectos, no dentro del calculo del costo:
+        // es por proyecto, y aplicarla despues de agregar convertiria dieciocho franquicias en
+        // una sola. CostIn cobra lo que le llega.
+        var facturable = units.WithFreeTransferApplied(NeonPricing.Launch);
+
         // 600 GB - 500 GB de franquicia = 100 GB facturables x 0,10 = 10,00
-        Assert.Equal(10.00m, units.CostIn(NeonPricing.Launch));
+        Assert.Equal(10.00m, facturable.CostIn(NeonPricing.Launch));
 
         // Sin franquicia se cobraría todo: 600 x 0,10 = 60,00
-        Assert.Equal(60.00m, units.CostIn(NeonPricing.Launch with { FreePublicTransferGbPerProject = 0m }));
+        Assert.Equal(
+            60.00m,
+            units
+                .WithFreeTransferApplied(NeonPricing.Launch with { FreePublicTransferGbPerProject = 0m })
+                .CostIn(NeonPricing.Launch));
     }
 
     [Fact]

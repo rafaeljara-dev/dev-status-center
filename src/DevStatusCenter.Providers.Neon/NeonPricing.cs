@@ -37,7 +37,11 @@ public sealed record NeonPricing(
         SnapshotStorageGbMonth: 0.09m,
         PublicTransferGb: 0.10m,
         PrivateTransferGb: 0m,
-        ExtraBranchMonth: 1.50m,
+        // Cero, no 1,50. La factura real del 19-ago-2026 no trae ninguna linea de ramas pese a
+        // que la API reportaba 3,7 ramas-mes: el plan Launch incluye 10 por proyecto y la
+        // metrica extra_branches_month cuenta ramas, no excedentes. Cobrarlas inflaba el total
+        // en 5,55 USD sobre una factura de 28,30.
+        ExtraBranchMonth: 0m,
 
         // Los planes de pago incluyen 500 GB de salida pública gratis por proyecto.
         FreePublicTransferGbPerProject: 500m,
@@ -95,17 +99,41 @@ public readonly record struct NeonBillableUnits(
             Raw(raw, "extra_branches_month") / HoursPerBranchMonth);
     }
 
+    public static NeonBillableUnits Empty { get; }
+
+    /// <summary>Suma dos proyectos. Se usa para presentar Neon como una sola fila.</summary>
+    public NeonBillableUnits Add(NeonBillableUnits other) => new(
+        ComputeUnitHours + other.ComputeUnitHours,
+        RootStorageGbMonths + other.RootStorageGbMonths,
+        ChildStorageGbMonths + other.ChildStorageGbMonths,
+        InstantRestoreGbMonths + other.InstantRestoreGbMonths,
+        SnapshotStorageGbMonths + other.SnapshotStorageGbMonths,
+        PublicTransferGb + other.PublicTransferGb,
+        PrivateTransferGb + other.PrivateTransferGb,
+        ExtraBranchMonths + other.ExtraBranchMonths);
+
     /// <summary>
-    /// Costo calculado del proyecto. La franquicia de salida pública se aplica por proyecto,
-    /// que es como la concede Neon.
+    /// Descuenta la franquicia de salida pública, que Neon concede <b>por proyecto</b>. Hay que
+    /// aplicarla antes de sumar proyectos o dieciocho franquicias se convierten en una.
+    /// </summary>
+    public NeonBillableUnits WithFreeTransferApplied(NeonPricing pricing)
+    {
+        ArgumentNullException.ThrowIfNull(pricing);
+        return this with
+        {
+            PublicTransferGb = Math.Max(0m, PublicTransferGb - pricing.FreePublicTransferGbPerProject)
+        };
+    }
+
+    /// <summary>
+    /// Costo calculado. La franquicia de salida ya viene descontada por
+    /// <see cref="WithFreeTransferApplied"/>: aplicarla aquí otra vez la contaría dos veces.
     /// </summary>
     public decimal CostIn(NeonPricing pricing)
     {
         ArgumentNullException.ThrowIfNull(pricing);
 
-        var billablePublicTransfer = Math.Max(
-            0m,
-            PublicTransferGb - pricing.FreePublicTransferGbPerProject);
+        var billablePublicTransfer = PublicTransferGb;
 
         var total =
             (ComputeUnitHours * pricing.ComputeUnitHour) +
