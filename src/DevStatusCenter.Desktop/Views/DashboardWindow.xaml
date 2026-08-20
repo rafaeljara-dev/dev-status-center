@@ -55,6 +55,17 @@
       <StackPanel Orientation="Horizontal">
         <TextBlock Text="THIS MONTH ·" Style="{StaticResource SectionLabel}" FontSize="11" Margin="0" />
         <TextBlock Text="{Binding CurrencyLabel}" Style="{StaticResource SectionLabel}" FontSize="11" Margin="4,0,0,0" />
+        <Border Background="#26F6C85F"
+                CornerRadius="4"
+                Padding="6,1"
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                Visibility="{Binding IsDemoData, Converter={StaticResource BooleanToVisibilityConverter}}">
+          <TextBlock Text="DEMO DATA"
+                     Style="{StaticResource MonoLabel}"
+                     FontSize="10"
+                     Foreground="{StaticResource WarningBrush}" />
+        </Border>
       </StackPanel>
       <Grid Margin="0,10,0,0">
         <Grid.ColumnDefinitions>

@@ -52,6 +52,7 @@ public sealed class DashboardViewModel : ObservableObject
     private string _currentAmount = "0.00";
     private string _projectedAmount = "0.00";
     private string _currencyLabel = "USD";
+    private bool _isDemoData;
     private string _budgetText = "No budget";
     private string _budgetLimit = string.Empty;
     private decimal _budgetPercent;
@@ -164,6 +165,17 @@ public sealed class DashboardViewModel : ObservableObject
     {
         get => _currencyLabel;
         private set => SetProperty(ref _currencyLabel, value);
+    }
+
+    /// <summary>
+    /// Cierto mientras todo lo que hay en pantalla venga del provider de demostracion. La fila de
+    /// cada servicio ya dice "Demo data", pero eso se lee al mirar una fila, no al mirar la cifra
+    /// grande: sin un aviso arriba es facil creerse un total que no es de nadie.
+    /// </summary>
+    public bool IsDemoData
+    {
+        get => _isDemoData;
+        private set => SetProperty(ref _isDemoData, value);
     }
 
     public string BudgetText
@@ -314,6 +326,8 @@ public sealed class DashboardViewModel : ObservableObject
             var now = DateTimeOffset.UtcNow;
             _snapshot = snapshot;
             CurrencyLabel = snapshot.Currency;
+            IsDemoData = snapshot.Services.Count > 0
+                && snapshot.Services.All(x => x.Source == DataSourceKind.Mock);
             CurrentAmount = ServiceRowViewModel.FormatAmount(snapshot.CurrentSpend.Amount, _culture);
             ProjectedAmount = ServiceRowViewModel.FormatAmount(snapshot.ProjectedSpend.Amount, _culture);
             BudgetText = snapshot.MonthlyBudget is { } budget
