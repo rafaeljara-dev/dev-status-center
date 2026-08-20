@@ -74,7 +74,7 @@ internal sealed class TrayAnimator : IDisposable
     /// para mostrar exactamente lo mismo, en el mismo instante: no son dos caras parecidas, es la
     /// misma dibujada dos veces.
     /// </summary>
-    public FaceFrame Current { get; private set; } = new(TrayArt.EyesOpen, TrayArt.Accent(PowerMode.Normal, 0m));
+    public FaceFrame Current { get; private set; } = new(TrayArt.Knockout(TrayArt.Body, TrayArt.EyesOpen), TrayArt.Accent(PowerMode.Normal, 0m));
 
     public event EventHandler<FaceFrame>? FrameChanged;
 
@@ -151,12 +151,12 @@ internal sealed class TrayAnimator : IDisposable
 
         Play(
             [
-                TrayArt.EyesOpen,
-                TrayArt.EyesRight,
-                TrayArt.EyesRight,
-                TrayArt.EyesOpen,
-                TrayArt.EyesLeft,
-                TrayArt.EyesLeft,
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesOpen),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesRight),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesRight),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesOpen),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesLeft),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesLeft),
             ],
             intervalMs: 160,
             loops: true);
@@ -175,11 +175,11 @@ internal sealed class TrayAnimator : IDisposable
 
         Play(
             [
-                TrayArt.EyesRight,
-                TrayArt.EyesRight,
-                TrayArt.EyesLeft,
-                TrayArt.EyesLeft,
-                TrayArt.EyesOpen,
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesRight),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesRight),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesLeft),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesLeft),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesOpen),
             ],
             intervalMs: 120,
             loops: false);
@@ -199,11 +199,12 @@ internal sealed class TrayAnimator : IDisposable
         // El pulso es la cara apareciendo y desapareciendo. Sin nada mas en el lienzo, encender
         // y apagar es la senal mas fuerte que caben en 16x16.
         var blank = TrayArt.Blank;
+        var face = Face();
         Play(
             [
-                TrayArt.EyesOpen, TrayArt.EyesOpen, blank,
-                TrayArt.EyesOpen, TrayArt.EyesOpen, blank,
-                TrayArt.EyesOpen, TrayArt.EyesOpen, TrayArt.EyesOpen
+                face, face, blank,
+                face, face, blank,
+                face, face, face
             ],
             intervalMs: 130,
             loops: false);
@@ -254,9 +255,9 @@ internal sealed class TrayAnimator : IDisposable
     {
         Play(
             [
-                TrayArt.EyesBlink,
-                TrayArt.EyesBlink,
-                TrayArt.EyesOpen,
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesBlink),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesBlink),
+                TrayArt.Knockout(TrayArt.Body, TrayArt.EyesOpen),
             ],
             intervalMs: 90,
             loops: false);
@@ -388,11 +389,11 @@ internal sealed class TrayAnimator : IDisposable
     }
 
     /// <summary>La expresion es estado, no animacion: puede durar horas y no debe moverse.</summary>
-    private string[] Face() => _mode == PowerMode.Paused
+    private string[] Face() => TrayArt.Knockout(TrayArt.Body, _mode == PowerMode.Paused
         ? TrayArt.EyesSleep
         : _providersFailing
             ? TrayArt.EyesDead
-            : TrayArt.EyesOpen;
+            : TrayArt.EyesOpen);
 
     private uint CurrentColor() => TrayArt.Accent(_mode, _budgetPercent);
 

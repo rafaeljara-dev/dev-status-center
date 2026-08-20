@@ -59,7 +59,11 @@ internal static class BrandGlyphs
                 return null;
             }
 
-            var geometry = Geometry.Parse(data);
+            // "F1" = regla de relleno nonzero. SVG rellena con nonzero por defecto; el mini
+            // lenguaje de trazados de WPF usa evenodd. Sin este prefijo, los logos que se dibujan
+            // con dos bucles en un mismo trazado salen invertidos: el de Neon perdia la N y
+            // quedaba un cuadro, y a los de OpenAI y Cloudflare les pasaba lo mismo por dentro.
+            var geometry = Geometry.Parse("F1 " + data);
             geometry.Freeze();
             Cache[key] = geometry;
             return geometry;

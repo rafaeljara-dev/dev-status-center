@@ -49,6 +49,25 @@ internal static class TrayArt
         "................", "................", "................", "................",
     ];
 
+    /// <summary>
+    /// El bloque de la cara. Con los colores invertidos, lo que se pinta es el cuerpo y los ojos
+    /// son huecos: a 16 px una mancha solida con agujeros se distingue en la barra mucho antes
+    /// que cuatro cuadraditos sueltos.
+    /// </summary>
+    public static readonly string[] Body = Rows(
+        (2, "..############.."),
+        (3, ".##############."),
+        (4, ".##############."),
+        (5, ".##############."),
+        (6, ".##############."),
+        (7, ".##############."),
+        (8, ".##############."),
+        (9, ".##############."),
+        (10, ".##############."),
+        (11, ".##############."),
+        (12, ".##############."),
+        (13, "..############.."));
+
     public static readonly string[] EyesOpen = Rows(
         (6, "..####....####.."),
         (7, "..####....####.."),
@@ -122,12 +141,42 @@ internal static class TrayArt
 
     // Los gags se bajan tres filas para centrarse igual que los ojos, en vez de repetir las
     // coordenadas a mano en cada dibujo.
+    // El gag tambien se recorta del cuerpo: dibujarlo encima en linea suelta chocaria con una
+    // cara que ahora es una mancha llena.
     public static readonly string[][] Gags =
     [
-        Shift(Laptop, dy: 3),
-        Shift(Coffee, dy: 3),
-        Shift(Phone, dy: 3)
+        Knockout(Body, Shift(Laptop, dy: 3)),
+        Knockout(Body, Shift(Coffee, dy: 3)),
+        Knockout(Body, Shift(Phone, dy: 3))
     ];
+
+    /// <summary>
+    /// Recorta <paramref name="holes"/> dentro de <paramref name="body"/>: donde el molde pinta,
+    /// el cuerpo se vacia. Es lo que convierte los ojos en agujeros en vez de en manchas.
+    /// </summary>
+    public static string[] Knockout(string[] body, params string[][] holes)
+    {
+        var canvas = Merge(body);
+        var result = new string[Size];
+        for (var y = 0; y < Size; y++)
+        {
+            var line = canvas[y].ToCharArray();
+            foreach (var hole in holes)
+            {
+                for (var x = 0; x < Size; x++)
+                {
+                    if (hole[y][x] != '.')
+                    {
+                        line[x] = '.';
+                    }
+                }
+            }
+
+            result[y] = new string(line);
+        }
+
+        return result;
+    }
 
     public static string[] Merge(params string[][] layers)
     {
