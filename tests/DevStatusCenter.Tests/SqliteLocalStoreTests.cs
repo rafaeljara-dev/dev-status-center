@@ -1,4 +1,5 @@
 using DevStatusCenter.Application.Providers;
+using DevStatusCenter.Domain.Enums;
 using DevStatusCenter.Domain.Models;
 using DevStatusCenter.Domain.ValueObjects;
 using DevStatusCenter.Infrastructure.Persistence;
@@ -87,6 +88,34 @@ public sealed class SqliteLocalStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task ApplyProviderRefresh_DisablesServicesNoLongerReportedByProvider()
+    {
+        var store = await CreateStoreAsync("retired-services.db");
+
+        // Simula la forma antigua de Neon: una fila por base/proyecto.
+        await store.ApplyProviderRefreshAsync(
+            NeonRefresh(
+                Now,
+                ("project-alpha", "alpha", 2m),
+                ("project-beta", "beta", 3m)),
+            CancellationToken.None);
+
+        // La forma actual reporta una sola fila para toda la organización.
+        await store.ApplyProviderRefreshAsync(
+            NeonRefresh(Now.AddDays(1), ("org-personal", "Neon", 5m)),
+            CancellationToken.None);
+
+        var dashboard = await store.ReadDashboardDataAsync(
+            "USD",
+            Now.AddDays(1),
+            CancellationToken.None);
+
+        var service = Assert.Single(dashboard.Services);
+        Assert.Equal("Neon", service.Service.Name);
+        Assert.Equal(5m, service.CurrentCost.Amount);
+    }
+
+    [Fact]
     public async Task ApplyProviderRefresh_IgnoresASnapshotOlderThanTheCurrentOne()
     {
         var store = await CreateStoreAsync("out-of-order.db");
@@ -129,6 +158,51 @@ public sealed class SqliteLocalStoreTests : IDisposable
         new MockProvider().RefreshAsync(
             new ProviderRefreshContext(at, false, "USD"),
             CancellationToken.None);
+
+    private static ProviderRefreshResult NeonRefresh(
+        DateTimeOffset at,
+        params (string ExternalId, string Name, decimal Amount)[] services)
+    {
+        var providerId = "neon";
+        var accountId = "neon:org-personal";
+        var periodStart = new DateTimeOffset(at.Year, at.Month, 1, 0, 0, 0, TimeSpan.Zero);
+        var period = new BillingPeriod(periodStart, periodStart.AddMonths(1), "UTC");
+        var observations = services.Select(item =>
+        {
+            var service = new Service(
+                $"{providerId}:{accountId}:{item.ExternalId}",
+                providerId,
+                accountId,
+                item.ExternalId,
+                item.Name,
+                ServiceCategory.Infrastructure,
+                CostBehavior.Variable);
+            return new ServiceObservation(
+                service,
+                [],
+                [new BillingRecord(
+                    $"{service.Id}:billing:{at.ToUnixTimeMilliseconds()}",
+                    service.Id,
+                    new Money(item.Amount, "USD"),
+                    period,
+                    at,
+                    DataSourceKind.OfficialUsageApi,
+                    DataAccuracy.Calculated)]);
+        }).ToArray();
+
+        return new ProviderRefreshResult(
+            providerId,
+            at,
+            [new ProviderAccount(
+                accountId,
+                providerId,
+                "Personal",
+                "org-personal",
+                "neon-personal")],
+            observations,
+            [],
+            []);
+    }
 
     private async Task<SqliteLocalStore> CreateStoreAsync(string fileName)
     {

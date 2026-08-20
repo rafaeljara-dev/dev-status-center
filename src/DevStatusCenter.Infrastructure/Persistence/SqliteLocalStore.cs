@@ -52,6 +52,16 @@ public sealed class SqliteLocalStore(
                 }
             }
 
+            // Un refresh exitoso es la fuente de verdad del provider. Si su forma de reportar
+            // servicios cambia (por ejemplo, Neon pasó de una fila por proyecto a una fila por
+            // organización), las filas antiguas no pueden seguir entrando en los totales. Se
+            // desactivan, pero no se borran: el histórico queda disponible para futuras gráficas.
+            await DisableMissingServicesAsync(
+                connection,
+                transaction,
+                result,
+                cancellationToken);
+
             foreach (var subscription in result.Subscriptions)
             {
                 await UpsertSubscriptionAsync(
@@ -93,6 +103,41 @@ public sealed class SqliteLocalStore(
         {
             connectionFactory.ExitWrite();
         }
+    }
+
+    private static async Task DisableMissingServicesAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        ProviderRefreshResult result,
+        CancellationToken cancellationToken)
+    {
+        var observedIds = result.Observations
+            .Select(x => x.Service.Id)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var exclusion = observedIds.Length == 0
+            ? "1 = 1"
+            : $"id NOT IN ({string.Join(", ", observedIds.Select((_, index) => $"$service{index}"))})";
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"""
+            UPDATE services
+            SET is_enabled = 0,
+                updated_at_ms = $updatedAt
+            WHERE provider_id = $providerId
+              AND is_enabled = 1
+              AND {exclusion};
+            """;
+        command.Parameters.AddWithValue("$providerId", result.ProviderId);
+        command.Parameters.AddWithValue("$updatedAt", SqliteValue.Instant(result.CompletedAt));
+        for (var index = 0; index < observedIds.Length; index++)
+        {
+            command.Parameters.AddWithValue($"$service{index}", observedIds[index]);
+        }
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async Task<DashboardCacheData> ReadDashboardDataAsync(

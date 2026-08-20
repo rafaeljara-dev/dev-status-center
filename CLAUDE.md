@@ -54,9 +54,9 @@ calibrarlas sin recompilar.
 ### Servicios huérfanos en la base
 
 Si un provider deja de reportar un servicio — se apagó el provider, o cambió la forma de
-agregarlos, como pasó al unir Neon en una fila — las filas viejas **se quedan en la base y siguen
-sumando**. Hoy hay que borrarlas a mano. Falta que un refresh exitoso retire los servicios de ese
-provider que no vinieron en el resultado.
+agregarlos, como pasó al unir Neon en una fila — las filas viejas se quedan en la base. En cada
+refresh exitoso, `SqliteLocalStore` desactiva los servicios de ese provider que no vinieron en el
+resultado; se conservan sus snapshots históricos, pero ya no aparecen ni suman en el dashboard.
 
 ## Reglas que ya se rompieron una vez
 
