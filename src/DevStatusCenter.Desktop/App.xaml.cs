@@ -46,6 +46,7 @@ public partial class App : System.Windows.Application, IDisposable
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        EnsureWindowsDirectoryEnvironment();
         HookFailureLogging();
 
         // --selftest: arranca, renderiza el popup, verifica que ningun binding falle y sale.
@@ -238,12 +239,40 @@ public partial class App : System.Windows.Application, IDisposable
         }
         catch (Exception ex)
         {
+            // El arranque ocurre sin consola. Guardar también las excepciones capturadas aquí evita
+            // que una instalación fallida parezca simplemente que nunca se abrió.
+            CrashLog.Write("Startup", ex);
             MessageBox.Show(
                 $"Dev Status Center could not start.\n\n{ex.Message}",
                 "Startup error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(1);
+        }
+    }
+
+    /// <summary>
+    /// WPF resuelve la caché de fuentes usando la variable de entorno histórica <c>windir</c>.
+    /// Algunas sesiones modernas sólo exponen <c>SystemRoot</c>; sin este alias, el inicializador
+    /// estático de <see cref="System.Windows.Window"/> lanza una UriFormatException antes de que
+    /// podamos construir la ventana.
+    /// </summary>
+    private static void EnsureWindowsDirectoryEnvironment()
+    {
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("windir")))
+        {
+            return;
+        }
+
+        var windowsDirectory = Environment.GetEnvironmentVariable("SystemRoot");
+        if (string.IsNullOrWhiteSpace(windowsDirectory))
+        {
+            windowsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        }
+
+        if (!string.IsNullOrWhiteSpace(windowsDirectory))
+        {
+            Environment.SetEnvironmentVariable("windir", windowsDirectory);
         }
     }
 
