@@ -13,18 +13,23 @@ namespace DevStatusCenter.Desktop.Tray;
 /// Leyenda: <c>#</c> trazo de la cara · <c>=</c> celda encendida del medidor ·
 /// <c>-</c> celda apagada · <c>p</c> celda del pago proximo · <c>.</c> vacio.
 ///
-/// El icono esta partido en dos mitades con reglas distintas: las filas 1-11 son la personalidad
-/// (expresiones y gags) y las filas 12-13 son el medidor de presupuesto. La cara son solo los
-/// ojos: sin boca, a 16 px la mirada se lee mas limpia y el dibujo aguanta mejor el escalado. Un gag ocupa la cara
-/// entera pero nunca toca esas dos filas: la broma no puede costar el dato. Las filas 0, 14 y 15
-/// se dejan vacias porque Windows recorta los bordes en algunas escalas de pantalla.
+/// El icono esta partido en dos con reglas distintas: las filas 0-12 son la personalidad
+/// (expresiones y gags) y la fila 14 es el medidor de presupuesto. La cara son solo los ojos.
+///
+/// El medidor vivia en dos filas justo debajo de los ojos y se leia como una boca. Ahora es una
+/// sola fila pegada al canto inferior y separada de la cara: deja de ser un rasgo y pasa a ser lo
+/// que es, una barra de estado. Un gag ocupa la cara entera pero nunca la toca: la broma no puede
+/// costar el dato. La fila 15 se deja vacia porque Windows recorta el canto en algunas escalas.
 /// </summary>
 internal static class TrayArt
 {
     public const int Size = 16;
 
-    /// <summary>Celdas del medidor. Doce es el ancho util dejando un margen de 2 px por lado.</summary>
-    private const int MeterCells = 12;
+    /// <summary>Celdas del medidor: todo el ancho menos un pixel de margen por lado.</summary>
+    private const int MeterCells = 14;
+
+    /// <summary>Fila del medidor. Pegada abajo y lejos de los ojos, para que no parezca boca.</summary>
+    private const int MeterRowIndex = 14;
 
     // La paleta vive aqui, en ARGB crudo, porque la pintan dos sistemas de tipos distintos: el
     // icono con System.Drawing y la cara del popup con System.Windows.Media. Tenerla una sola vez
@@ -61,27 +66,27 @@ internal static class TrayArt
     ];
 
     public static readonly string[] EyesOpen = Rows(
-        (3, "..####....####.."),
         (4, "..####....####.."),
         (5, "..####....####.."),
-        (6, "..####....####.."));
+        (6, "..####....####.."),
+        (7, "..####....####.."));
 
     /// <summary>Al parpadear los ojos se cierran en chevrones hacia dentro: un &gt;_&lt;.</summary>
     public static readonly string[] EyesBlink = Rows(
-        (3, "..##........##.."),
-        (4, "...##......##..."),
+        (4, "..##........##.."),
         (5, "...##......##..."),
-        (6, "..##........##.."));
+        (6, "...##......##..."),
+        (7, "..##........##.."));
 
     public static readonly string[] EyesSleep = Rows(
-        (4, "..####....####.."),
-        (5, "..####....####.."));
+        (5, "..####....####.."),
+        (6, "..####....####.."));
 
     public static readonly string[] EyesDead = Rows(
-        (3, "..#..#....#..#.."),
-        (4, "...##......##..."),
+        (4, "..#..#....#..#.."),
         (5, "...##......##..."),
-        (6, "..#..#....#..#.."));
+        (6, "...##......##..."),
+        (7, "..#..#....#..#.."));
 
     public static readonly string[] EyesLeft = Shift(EyesOpen, -1);
 
@@ -157,11 +162,10 @@ internal static class TrayArt
         {
             // La ultima celda marca en ambar que hay un cargo dentro de tres dias. Es el unico
             // aviso que hoy no tiene forma de llegar sin abrir el popup.
-            line[i + 2] = paymentDue && i == MeterCells - 1 ? 'p' : cell(i);
+            line[i + 1] = paymentDue && i == MeterCells - 1 ? 'p' : cell(i);
         }
 
-        var body = new string(line);
-        return Rows((12, body), (13, body));
+        return Rows((MeterRowIndex, new string(line)));
     }
 
     public static string[] Merge(params string[][] layers)

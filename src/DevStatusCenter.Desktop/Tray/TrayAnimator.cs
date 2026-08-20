@@ -246,9 +246,10 @@ internal sealed class TrayAnimator : IDisposable
         Play(
             [
                 TrayArt.Merge(TrayArt.EyesBlink, meter),
+                TrayArt.Merge(TrayArt.EyesBlink, meter),
                 TrayArt.Merge(TrayArt.EyesOpen, meter),
             ],
-            intervalMs: 110,
+            intervalMs: 90,
             loops: false);
     }
 
@@ -402,5 +403,7 @@ internal sealed class TrayAnimator : IDisposable
         }
     }
 
-    private static int NextIdleInterval() => Random.Shared.Next(25_000, 70_000);
+    // Un parpadeo cada 10-25 s: lo bastante seguido para que se note que la cara esta viva, y lo
+    // bastante espaciado para que sigan siendo dos reemplazos de icono y no una animacion continua.
+    private static int NextIdleInterval() => Random.Shared.Next(10_000, 25_000);
 }

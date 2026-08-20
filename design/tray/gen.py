@@ -83,6 +83,7 @@ EYES_OPEN = rows(
     "................",
     "................",
     "................",
+    "................",
     "..####....####..",
     "..####....####..",
     "..####....####..",
@@ -90,6 +91,7 @@ EYES_OPEN = rows(
 )
 
 EYES_BLINK = rows(
+    "................",
     "................",
     "................",
     "................",
@@ -104,12 +106,13 @@ EYES_SLEEP = rows(
     "................",
     "................",
     "................",
-    "..####....####..",
-    "..####....####..",
     "................",
+    "..####....####..",
+    "..####....####..",
 )
 
 EYES_DEAD = rows(
+    "................",
     "................",
     "................",
     "................",
@@ -146,7 +149,7 @@ FACE_DEAD = EYES_DEAD
 
 def meter(percent, sweep=None):
     """Las dos filas de abajo. Doce celdas: es el medidor del popup, reducido a la bandeja."""
-    cells = 12
+    cells = 14
     lit = round(max(0.0, min(100.0, percent)) / 100 * cells)
     line = []
     for i in range(cells):
@@ -156,8 +159,8 @@ def meter(percent, sweep=None):
             line.append("-")
         else:
             line.append("=" if i < lit else "-")
-    body = ".." + "".join(line) + ".."
-    return rows(*["." * 16] * 12, body, body)
+    body = "." + "".join(line) + "."
+    return rows(*["." * 16] * 14, body)
 
 
 BASE = merge(FACE, meter(62))
@@ -553,21 +556,21 @@ def build_main():
       {zoom(BASE, 200)}
       <div style="display: flex; flex-direction: column; gap: 14px;">
         <div style="display: flex; gap: 12px; align-items: flex-start;">
-          <span style="font-family: {MONO}; font-size: 10px; color: {ACCENT}; padding-top: 2px;">1-11</span>
+          <span style="font-family: {MONO}; font-size: 10px; color: {ACCENT}; padding-top: 2px;">0-12</span>
           <div>
             <div style="font-size: 12px; font-weight: 500;">La cara</div>
             <div style="font-size: 11px; color: {MUTED}; line-height: 1.5; margin-top: 3px;">Once filas para la personalidad. Aqui viven el parpadeo, las expresiones y los gags.</div>
           </div>
         </div>
         <div style="display: flex; gap: 12px; align-items: flex-start;">
-          <span style="font-family: {MONO}; font-size: 10px; color: {ACCENT}; padding-top: 2px;">12-13</span>
+          <span style="font-family: {MONO}; font-size: 10px; color: {ACCENT}; padding-top: 2px;">14</span>
           <div>
             <div style="font-size: 12px; font-weight: 500;">El medidor</div>
-            <div style="font-size: 11px; color: {MUTED}; line-height: 1.5; margin-top: 3px;">Doce celdas con el presupuesto del mes: es la opcion A reducida a dos filas. <strong style="color: {TEXT}; font-weight: 500;">Nunca lo tapa un gag.</strong> Asi el icono siempre dice el dato, se este divirtiendo o no.</div>
+            <div style="font-size: 11px; color: {MUTED}; line-height: 1.5; margin-top: 3px;">Catorce celdas con el presupuesto del mes, en una sola fila pegada al canto. Antes eran dos filas justo debajo de los ojos y se leian como una boca. <strong style="color: {TEXT}; font-weight: 500;">Nunca lo tapa un gag.</strong> Asi el icono siempre dice el dato, se este divirtiendo o no.</div>
           </div>
         </div>
         <div style="display: flex; gap: 12px; align-items: flex-start;">
-          <span style="font-family: {MONO}; font-size: 10px; color: {FAINT}; padding-top: 2px;">0, 14-15</span>
+          <span style="font-family: {MONO}; font-size: 10px; color: {FAINT}; padding-top: 2px;">13, 15</span>
           <div>
             <div style="font-size: 12px; font-weight: 500;">Margen</div>
             <div style="font-size: 11px; color: {MUTED}; line-height: 1.5; margin-top: 3px;">Vacio a proposito: Windows recorta un pixel de los bordes en algunas escalas de pantalla.</div>
