@@ -151,6 +151,7 @@ public sealed class AlertEvaluatorTests
             payments ?? [],
             [],
             providers ?? [],
+            [],
             hasSynced ? Now.AddMinutes(-5) : null,
             IsStale: false);
     }

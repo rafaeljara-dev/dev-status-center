@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using DevStatusCenter.Application.Abstractions;
+using DevStatusCenter.Application.Health;
 using DevStatusCenter.Application.Power;
 using DevStatusCenter.Application.Providers;
 using DevStatusCenter.Domain.Enums;
@@ -35,6 +36,9 @@ public sealed class RefreshScheduler : IAsyncDisposable
     private CancellationTokenSource? _activeRefreshCts;
     private Task? _loopTask;
     private DateTimeOffset _nextPruneAt;
+    private readonly HealthMonitor? _healthMonitor;
+    private readonly IReadOnlyList<HealthTarget> _healthTargets;
+    private DateTimeOffset _nextHealthAt;
     private bool _disposed;
 
     /// <summary>Mantenimiento del historico: como mucho una vez al dia.</summary>
@@ -46,6 +50,15 @@ public sealed class RefreshScheduler : IAsyncDisposable
     /// </summary>
     private static readonly TimeSpan FirstPruneDelay = TimeSpan.FromMinutes(5);
 
+    /// <summary>
+    /// Cada cuanto se miran las paginas de estado. Cinco minutos porque un corte importa mientras
+    /// dura, no cuando ya paso; en Eco se espacia porque el equipo esta a bateria y una caida de
+    /// GitHub tampoco se arregla mirandola mas seguido.
+    /// </summary>
+    private static readonly TimeSpan HealthInterval = TimeSpan.FromMinutes(5);
+
+    private static readonly TimeSpan HealthEcoInterval = TimeSpan.FromMinutes(20);
+
     public RefreshScheduler(
         IReadOnlyList<IProvider> providers,
         ILocalStore store,
@@ -53,7 +66,9 @@ public sealed class RefreshScheduler : IAsyncDisposable
         TimeProvider timeProvider,
         string displayCurrency,
         int maximumConcurrency = 3,
-        TimeSpan? historyRetention = null)
+        TimeSpan? historyRetention = null,
+        HealthMonitor? healthMonitor = null,
+        IReadOnlyList<HealthTarget>? healthTargets = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(maximumConcurrency, 1);
         _providers = providers;
@@ -65,6 +80,8 @@ public sealed class RefreshScheduler : IAsyncDisposable
         // 400 dias cubren las comparativas de 12 meses que pide el roadmap con margen para
         // periodos de facturacion desfasados, sin dejar crecer el archivo sin limite.
         _historyRetention = historyRetention ?? TimeSpan.FromDays(400);
+        _healthMonitor = healthMonitor;
+        _healthTargets = healthTargets ?? [];
         _concurrency = new SemaphoreSlim(maximumConcurrency, maximumConcurrency);
         _commands = Channel.CreateUnbounded<SchedulerCommand>(new UnboundedChannelOptions
         {
@@ -177,12 +194,20 @@ public sealed class RefreshScheduler : IAsyncDisposable
             }
 
             // El scheduler ya no tiene refrescos pendientes: es el momento barato para la
-            // limpieza del historico.
+            // limpieza del historico y para mirar las paginas de estado.
             await PruneHistoryIfDueAsync(now, cancellationToken);
+            await RefreshHealthIfDueAsync(now, cancellationToken);
 
             var nextDue = _runtime.Count == 0
                 ? now.AddHours(24)
                 : _runtime.Values.Min(x => x.NextDueAt);
+
+            // La salud tiene su propio reloj, mucho mas rapido que el de los costos: si no entrara
+            // en el calculo, el bucle dormiria media hora y la pestana de estado se quedaria vieja.
+            if (_healthMonitor is not null && _healthTargets.Count > 0 && _nextHealthAt < nextDue)
+            {
+                nextDue = _nextHealthAt;
+            }
             var delay = nextDue > now ? nextDue - now : TimeSpan.Zero;
             await WaitForCommandOrDelayAsync(delay, cancellationToken);
         }
@@ -262,6 +287,39 @@ public sealed class RefreshScheduler : IAsyncDisposable
             RefreshRequestStatus.Completed,
             eligible.Length,
             $"Refreshed {eligible.Length} provider(s)."));
+    }
+
+    /// <summary>
+    /// Consulta las paginas de estado y guarda el resultado. Los fallos individuales ya los
+    /// absorbe el monitor devolviendo "desconocido"; lo que se captura aqui es que la tanda entera
+    /// reviente, porque perder el estado de terceros no puede tumbar el ciclo de costos.
+    /// </summary>
+    private async Task RefreshHealthIfDueAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (_healthMonitor is null || _healthTargets.Count == 0 || now < _nextHealthAt)
+        {
+            return;
+        }
+
+        var interval = _powerManager.Mode == PowerMode.Eco ? HealthEcoInterval : HealthInterval;
+        _nextHealthAt = now + interval;
+        try
+        {
+            var health = await _healthMonitor.CheckAsync(_healthTargets, cancellationToken);
+            if (health.Count > 0)
+            {
+                await _store.SaveServiceHealthAsync(health, cancellationToken);
+                SnapshotChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // Se reintenta en el siguiente vencimiento; el estado anterior sigue en cache.
+        }
     }
 
     private async Task PruneHistoryIfDueAsync(DateTimeOffset now, CancellationToken cancellationToken)

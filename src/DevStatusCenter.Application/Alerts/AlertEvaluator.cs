@@ -42,6 +42,7 @@ public static class AlertEvaluator
         AddBudgetAlerts(alerts, snapshot);
         AddPaymentAlerts(alerts, snapshot, now);
         AddProviderAlerts(alerts, snapshot);
+        AddOutageAlerts(alerts, snapshot);
         return alerts;
     }
 
@@ -151,6 +152,40 @@ public static class AlertEvaluator
                 default:
                     break;
             }
+        }
+    }
+
+    /// <summary>
+    /// Caidas de servicios de terceros. El id del alerta incluye el indicador a proposito: si un
+    /// incidente empeora de degradado a caida total, es una alerta distinta y vuelve a sonar, en
+    /// vez de quedarse callada por el enfriamiento de la primera.
+    ///
+    /// Lo desconocido no alerta: no haber podido leer la pagina de estado no es una caida, y
+    /// tratarlo como tal convertiria cualquier corte de red propio en una falsa alarma.
+    /// </summary>
+    private static void AddOutageAlerts(List<Alert> alerts, DashboardSnapshot snapshot)
+    {
+        foreach (var service in snapshot.Health)
+        {
+            if (!service.IsDisrupted)
+            {
+                continue;
+            }
+
+            var severity = service.Indicator switch
+            {
+                HealthIndicator.MajorOutage => AlertSeverity.Critical,
+                HealthIndicator.PartialOutage => AlertSeverity.Important,
+                _ => AlertSeverity.Warning
+            };
+
+            alerts.Add(new Alert(
+                $"alert:outage:{service.Key}:{service.Indicator}",
+                severity,
+                "outage",
+                $"{service.DisplayName}: {service.Description}",
+                service.IncidentTitle ?? "Mira la pagina de estado del proveedor para el detalle.",
+                (int)service.Indicator));
         }
     }
 

@@ -55,6 +55,17 @@ public interface ILocalStore
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Guarda la salud publicada de los servicios de terceros. Una fila por servicio, sin
+    /// historial: lo unico que se muestra es el estado de ahora.
+    /// </summary>
+    Task SaveServiceHealthAsync(
+        IReadOnlyCollection<ServiceHealth> health,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ServiceHealth>> ReadServiceHealthAsync(
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Borra snapshots de usage/billing e historial de refresh mas viejos que
     /// <paramref name="retention"/>. La proyeccion vigente que alimenta el dashboard no se
     /// toca, asi que podar nunca deja la UI en blanco. Devuelve las filas eliminadas.

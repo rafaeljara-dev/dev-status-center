@@ -28,6 +28,7 @@ public sealed class AppOptions
         string displayCurrency,
         int normalConcurrency,
         int historyRetentionDays,
+        IReadOnlyList<string> healthServices,
         FrozenDictionary<string, ProviderOptions> providers)
     {
         DatabasePath = databasePath;
@@ -35,6 +36,7 @@ public sealed class AppOptions
         DisplayCurrency = displayCurrency;
         NormalConcurrency = normalConcurrency;
         HistoryRetentionDays = historyRetentionDays;
+        HealthServices = healthServices;
         Providers = providers;
     }
 
@@ -51,6 +53,13 @@ public sealed class AppOptions
     public int HistoryRetentionDays { get; }
 
     public TimeSpan HistoryRetention => TimeSpan.FromDays(HistoryRetentionDays);
+
+    /// <summary>
+    /// Claves de <c>HealthCatalog</c> a vigilar. Vacío significa "las de fábrica", no "ninguna":
+    /// quien no toca el archivo espera que la pestaña de estado funcione sin configurar nada.
+    /// Una lista con un solo elemento vacío es como se apaga del todo.
+    /// </summary>
+    public IReadOnlyList<string> HealthServices { get; }
 
     public FrozenDictionary<string, ProviderOptions> Providers { get; }
 
@@ -72,6 +81,7 @@ public sealed class AppOptions
         string? displayCurrency = null,
         int? normalConcurrency = null,
         int? historyRetentionDays = null,
+        IEnumerable<string>? healthServices = null,
         IEnumerable<KeyValuePair<string, ProviderOptions>>? providers = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(localRoot);
@@ -88,6 +98,7 @@ public sealed class AppOptions
             // Mínimo 7 días para que las anomalías tengan de dónde comparar; máximo 10 años
             // para que un cero mal tecleado no signifique "guardar para siempre".
             Math.Clamp(historyRetentionDays ?? 400, 7, 3_650),
+            [.. (healthServices ?? []).Where(x => !string.IsNullOrWhiteSpace(x))],
             (providers ?? []).ToFrozenDictionary(StringComparer.OrdinalIgnoreCase));
     }
 
@@ -110,6 +121,7 @@ public sealed class AppOptions
             DisplayCurrency,
             NormalConcurrency,
             HistoryRetentionDays,
+            HealthServices,
             merged.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase));
     }
 

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using DevStatusCenter.Application.Configuration;
+using DevStatusCenter.Application.Health;
 
 namespace DevStatusCenter.Infrastructure.Configuration;
 
@@ -27,6 +28,9 @@ internal sealed class AppOptionsFile
         "CA2227:Collection properties should be read only",
         Justification = "DTO de deserialización: System.Text.Json necesita poder asignar el diccionario. " +
                         "No se expone fuera de este ensamblado; el modelo público es AppOptions, inmutable.")]
+    /// <summary>Claves de servicios cuya pagina de estado se vigila. Nulo o vacio = las de fabrica.</summary>
+    public List<string>? HealthServices { get; set; }
+
     public Dictionary<string, ProviderOptionsFile>? Providers { get; set; }
 }
 
@@ -110,6 +114,7 @@ public static class AppOptionsStore
             DisplayCurrency = defaults.DisplayCurrency,
             NormalConcurrency = defaults.NormalConcurrency,
             HistoryRetentionDays = defaults.HistoryRetentionDays,
+            HealthServices = [.. defaults.HealthServices],
             Providers = defaults.Providers.ToDictionary(
                 x => x.Key,
                 x => new ProviderOptionsFile
@@ -148,6 +153,7 @@ public static class AppOptionsStore
             DisplayCurrency = options.DisplayCurrency,
             NormalConcurrency = options.NormalConcurrency,
             HistoryRetentionDays = options.HistoryRetentionDays,
+            HealthServices = [.. options.HealthServices],
             Providers = options.Providers.ToDictionary(
                 x => x.Key,
                 x => new ProviderOptionsFile
@@ -175,6 +181,7 @@ public static class AppOptionsStore
     /// </summary>
     public static AppOptions Defaults(string localRoot) => AppOptions.Create(
         localRoot,
+        healthServices: HealthCatalog.Defaults.Select(x => x.Key),
         providers: BuildDefaultProviders());
 
     private static AppOptions Materialize(string localRoot, AppOptionsFile? file)
@@ -200,6 +207,7 @@ public static class AppOptionsStore
             file.DisplayCurrency,
             file.NormalConcurrency,
             file.HistoryRetentionDays,
+            file.HealthServices,
             providers);
     }
 

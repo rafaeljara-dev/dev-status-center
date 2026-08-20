@@ -28,6 +28,7 @@ public sealed class DashboardViewModel : ObservableObject
     public const int TabAi = 1;
     public const int TabCloud = 2;
     public const int TabPayments = 3;
+    public const int TabStatus = 4;
 
     private static readonly Brush EmptyBlockBrush = Frozen(Color.FromArgb(0x17, 0xFF, 0xFF, 0xFF));
 
@@ -45,6 +46,7 @@ public sealed class DashboardViewModel : ObservableObject
     private IReadOnlyList<ServiceRowViewModel> _topSpend = [];
     private IReadOnlyList<PaymentRowViewModel> _payments = [];
     private IReadOnlyList<QuickAccessRowViewModel> _quickAccess = [];
+    private IReadOnlyList<HealthRowViewModel> _health = [];
     private MeterBlockViewModel[] _budgetMeter = BuildMeter(0m, 0m, "#62D99C");
     private PaymentRowViewModel? _nextPayment;
     private string _currentAmount = "0.00";
@@ -79,6 +81,7 @@ public sealed class DashboardViewModel : ObservableObject
         ToggleMonitoringCommand = new AsyncRelayCommand(_ => ToggleMonitoringAsync());
         OpenQuickAccessCommand = new AsyncRelayCommand(OpenQuickAccessAsync);
         SelectTabCommand = new RelayCommand(SelectTab);
+        OpenStatusPageCommand = new RelayCommand(OpenStatusPage);
         _powerManager.ModeChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(PowerMode));
@@ -96,6 +99,8 @@ public sealed class DashboardViewModel : ObservableObject
     public ICommand OpenQuickAccessCommand { get; }
 
     public ICommand SelectTabCommand { get; }
+
+    public ICommand OpenStatusPageCommand { get; }
 
     public IReadOnlyList<ServiceRowViewModel> AiServices
     {
@@ -132,6 +137,13 @@ public sealed class DashboardViewModel : ObservableObject
     {
         get => _quickAccess;
         private set => SetProperty(ref _quickAccess, value);
+    }
+
+    /// <summary>Salud publicada de los servicios de terceros, lo roto primero.</summary>
+    public IReadOnlyList<HealthRowViewModel> Health
+    {
+        get => _health;
+        private set => SetProperty(ref _health, value);
     }
 
     public IReadOnlyList<MeterBlockViewModel> BudgetMeter => _budgetMeter;
@@ -219,7 +231,7 @@ public sealed class DashboardViewModel : ObservableObject
         get => _selectedTab;
         set
         {
-            var clamped = Math.Clamp(value, TabOverview, TabPayments);
+            var clamped = Math.Clamp(value, TabOverview, TabStatus);
             if (!SetProperty(ref _selectedTab, clamped) || _restoringTab)
             {
                 return;
@@ -328,6 +340,7 @@ public sealed class DashboardViewModel : ObservableObject
                 .ToArray();
             NextPayment = Payments.Count > 0 ? Payments[0] : null;
             QuickAccess = FlattenQuickAccess(snapshot.QuickAccess);
+            Health = [.. snapshot.Health.Select(HealthRowViewModel.From)];
 
             LastSync = snapshot.LastSuccessfulSync is { } sync
                 ? $"Last sync {RelativeTime(sync)}"
@@ -336,12 +349,17 @@ public sealed class DashboardViewModel : ObservableObject
                 ? $"SYNC {CompactAge(now - stamp)}"
                 : "NO SYNC";
             ServiceBadge = $"{snapshot.Services.Count} SVC";
+            // Una caida de terceros gana al resto en la linea de estado: es lo unico de aqui que
+            // te impide trabajar ahora mismo, y no depende de nada que tu puedas arreglar.
+            var down = snapshot.Health.Count(x => x.IsDisrupted);
             var failing = snapshot.ProviderStates.Count(x => x.ConsecutiveFailures > 0);
-            AlertBadge = failing > 0
-                ? $"{failing} PROVIDER{(failing == 1 ? string.Empty : "S")} FAILING"
-                : BudgetPercent >= 85m
-                    ? $"BUDGET {BudgetPercent:0}%"
-                    : string.Empty;
+            AlertBadge = down > 0
+                ? $"{down} SERVICE{(down == 1 ? string.Empty : "S")} DOWN"
+                : failing > 0
+                    ? $"{failing} PROVIDER{(failing == 1 ? string.Empty : "S")} FAILING"
+                    : BudgetPercent >= 85m
+                        ? $"BUDGET {BudgetPercent:0}%"
+                        : string.Empty;
 
             StatusText = snapshot.IsStale ? "Showing cached data" : "Cache is current";
             OnPropertyChanged(nameof(StatusColor));
@@ -379,6 +397,14 @@ public sealed class DashboardViewModel : ObservableObject
     /// </summary>
     private void FocusAlertTab(DashboardSnapshot snapshot)
     {
+        // Un servicio caido pesa mas que una cuota alta: la cuota es tuya y puede esperar, la
+        // caida no depende de ti y cambia lo que puedes hacer en el minuto siguiente.
+        if (snapshot.Health.Any(x => x.IsDisrupted))
+        {
+            SelectedTab = TabStatus;
+            return;
+        }
+
         var alarming = snapshot.Services.FirstOrDefault(service => service.Usage
             .Any(usage => usage.Metric.Kind == MetricKind.QuotaConsumed && usage.Value >= 85m));
         if (alarming is null)
@@ -451,6 +477,34 @@ public sealed class DashboardViewModel : ObservableObject
             int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
         {
             SelectedTab = parsed;
+        }
+    }
+
+    /// <summary>
+    /// Abre la pagina de estado del proveedor en el navegador. UseShellExecute es correcto aqui —
+    /// y no lo era para las carpetas: para un http:// el handler del sistema es el navegador, no
+    /// un IDE que se haya apropiado de la clase Directory.
+    /// </summary>
+    private void OpenStatusPage(object? parameter)
+    {
+        if (parameter is not HealthRowViewModel row ||
+            !Uri.TryCreate(row.Url, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+        {
+            return;
+        }
+
+        try
+        {
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = uri.AbsoluteUri,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex.Message;
         }
     }
 

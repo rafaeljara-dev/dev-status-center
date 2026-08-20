@@ -93,6 +93,47 @@ public sealed record PaymentRowViewModel(
 }
 
 /// <summary>
+/// Una fila de la pestaña de estado: lo que el proveedor dice de si mismo.
+/// </summary>
+public sealed record HealthRowViewModel(
+    string Name,
+    string Description,
+    string? IncidentTitle,
+    string Glyph,
+    string Color,
+    string Url,
+    bool IsDisrupted)
+{
+    public bool HasIncident => !string.IsNullOrWhiteSpace(IncidentTitle);
+
+    public static HealthRowViewModel From(ServiceHealth health)
+    {
+        ArgumentNullException.ThrowIfNull(health);
+
+        // El glifo lleva el estado sin depender del color: sirve para daltonismo y sobrevive a
+        // una captura de pantalla en blanco y negro.
+        var (glyph, color) = health.Indicator switch
+        {
+            HealthIndicator.Operational => ("●", "#62D99C"),
+            HealthIndicator.Maintenance => ("◔", "#99A4B5"),
+            HealthIndicator.Degraded => ("▲", "#F6C85F"),
+            HealthIndicator.PartialOutage => ("▲", "#F49A5A"),
+            HealthIndicator.MajorOutage => ("■", "#F06464"),
+            _ => ("?", "#6B7A90")
+        };
+
+        return new HealthRowViewModel(
+            health.DisplayName,
+            health.Description,
+            health.IncidentTitle,
+            glyph,
+            color,
+            health.IncidentUrl ?? health.StatusPageUrl,
+            health.IsDisrupted);
+    }
+}
+
+/// <summary>
 /// Un bloque del medidor de presupuesto. Quince bloques en vez de una barra continua porque un
 /// bloque es contable de un vistazo: se lee "ocho de quince" sin comparar longitudes.
 /// </summary>

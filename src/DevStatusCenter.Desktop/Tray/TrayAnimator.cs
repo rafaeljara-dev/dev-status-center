@@ -403,7 +403,7 @@ internal sealed class TrayAnimator : IDisposable
         }
     }
 
-    // Un parpadeo cada 10-25 s: lo bastante seguido para que se note que la cara esta viva, y lo
-    // bastante espaciado para que sigan siendo dos reemplazos de icono y no una animacion continua.
-    private static int NextIdleInterval() => Random.Shared.Next(10_000, 25_000);
+    // Un parpadeo cada 5-10 s. Son tres reemplazos de icono por parpadeo: a ese ritmo siguen
+    // siendo del orden de un cuadro por segundo de media, no una animacion corriendo en bucle.
+    private static int NextIdleInterval() => Random.Shared.Next(5_000, 10_000);
 }

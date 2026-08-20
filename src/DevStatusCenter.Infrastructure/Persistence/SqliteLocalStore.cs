@@ -357,6 +357,99 @@ public sealed class SqliteLocalStore(
         return due;
     }
 
+    public async Task SaveServiceHealthAsync(
+        IReadOnlyCollection<ServiceHealth> health,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(health);
+        if (health.Count == 0)
+        {
+            return;
+        }
+
+        await connectionFactory.EnterWriteAsync(cancellationToken);
+        try
+        {
+            await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+            await using var transaction = connection.BeginTransaction();
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                INSERT INTO service_health(
+                    service_key, display_name, indicator, description,
+                    status_page_url, incident_title, incident_url, checked_at_ms)
+                VALUES ($key, $name, $indicator, $description, $page, $title, $url, $checked)
+                ON CONFLICT(service_key) DO UPDATE SET
+                    display_name = excluded.display_name,
+                    indicator = excluded.indicator,
+                    description = excluded.description,
+                    status_page_url = excluded.status_page_url,
+                    incident_title = excluded.incident_title,
+                    incident_url = excluded.incident_url,
+                    checked_at_ms = excluded.checked_at_ms;
+                """;
+            var key = command.Parameters.Add("$key", SqliteType.Text);
+            var name = command.Parameters.Add("$name", SqliteType.Text);
+            var indicator = command.Parameters.Add("$indicator", SqliteType.Integer);
+            var description = command.Parameters.Add("$description", SqliteType.Text);
+            var page = command.Parameters.Add("$page", SqliteType.Text);
+            var title = command.Parameters.Add("$title", SqliteType.Text);
+            var url = command.Parameters.Add("$url", SqliteType.Text);
+            var checkedAt = command.Parameters.Add("$checked", SqliteType.Integer);
+
+            foreach (var entry in health)
+            {
+                key.Value = entry.Key;
+                name.Value = entry.DisplayName;
+                indicator.Value = (int)entry.Indicator;
+                description.Value = entry.Description;
+                page.Value = entry.StatusPageUrl;
+                title.Value = (object?)entry.IncidentTitle ?? DBNull.Value;
+                url.Value = (object?)entry.IncidentUrl ?? DBNull.Value;
+                checkedAt.Value = SqliteValue.Instant(entry.CheckedAt);
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            connectionFactory.ExitWrite();
+        }
+    }
+
+    public async Task<IReadOnlyList<ServiceHealth>> ReadServiceHealthAsync(
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT service_key, display_name, indicator, description,
+                   status_page_url, incident_title, incident_url, checked_at_ms
+            FROM service_health;
+            """;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var result = new List<ServiceHealth>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new ServiceHealth(
+                reader.GetString(0),
+                reader.GetString(1),
+                (HealthIndicator)reader.GetInt32(2),
+                reader.GetString(3),
+                reader.GetString(4),
+                SqliteValue.ReadInstant(reader.GetInt64(7)),
+                reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.IsDBNull(6) ? null : reader.GetString(6)));
+        }
+
+        // Lo roto primero: en una lista de dieciseis servicios, lo unico que se busca es lo que
+        // no esta bien.
+        return [.. result
+            .OrderByDescending(x => x.Indicator)
+            .ThenBy(x => x.DisplayName, StringComparer.Ordinal)];
+    }
+
     public async Task<int> PruneHistoryAsync(TimeSpan retention, CancellationToken cancellationToken)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(retention, TimeSpan.Zero);

@@ -68,5 +68,6 @@ public sealed record DashboardSnapshot(
     IReadOnlyList<Payment> UpcomingPayments,
     IReadOnlyList<QuickAccessEntry> QuickAccess,
     IReadOnlyList<ProviderState> ProviderStates,
+    IReadOnlyList<ServiceHealth> Health,
     DateTimeOffset? LastSuccessfulSync,
     bool IsStale);

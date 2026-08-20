@@ -5,6 +5,7 @@ using DevStatusCenter.Application.Alerts;
 using DevStatusCenter.Application.Configuration;
 using DevStatusCenter.Application.Dashboard;
 using DevStatusCenter.Application.Forecast;
+using DevStatusCenter.Application.Health;
 using DevStatusCenter.Application.Networking;
 using DevStatusCenter.Application.Power;
 using DevStatusCenter.Application.Providers;
@@ -99,6 +100,10 @@ public partial class App : System.Windows.Application, IDisposable
             var http = new ResilientHttpExecutor(transport.Client, TimeProvider.System);
 
             var providers = await BuildProvidersAsync(options, secrets, http);
+
+            // Las paginas de estado son feeds publicos: van por el mismo transporte compartido,
+            // pero sin pasar por el secret store porque no hay credencial que pasar.
+            var healthTargets = HealthCatalog.Resolve(options.HealthServices);
             _scheduler = new RefreshScheduler(
                 providers,
                 store,
@@ -106,7 +111,9 @@ public partial class App : System.Windows.Application, IDisposable
                 TimeProvider.System,
                 options.DisplayCurrency,
                 options.NormalConcurrency,
-                options.HistoryRetention);
+                options.HistoryRetention,
+                new HealthMonitor(transport.Client, TimeProvider.System),
+                healthTargets);
             var dashboardService = new DashboardService(
                 store,
                 TimeProvider.System,

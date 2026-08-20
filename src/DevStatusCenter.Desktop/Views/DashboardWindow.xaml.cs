@@ -140,7 +140,7 @@ public partial class DashboardWindow : Window
         }
     }
 
-    /// <summary>Teclas 1-4 para las pestañas y Esc para cerrar: el popup se usa sin soltar el teclado.</summary>
+    /// <summary>Teclas 1-5 para las pestañas y Esc para cerrar: el popup se usa sin soltar el teclado.</summary>
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         var tab = e.Key switch
@@ -149,6 +149,7 @@ public partial class DashboardWindow : Window
             Key.D2 or Key.NumPad2 => DashboardViewModel.TabAi,
             Key.D3 or Key.NumPad3 => DashboardViewModel.TabCloud,
             Key.D4 or Key.NumPad4 => DashboardViewModel.TabPayments,
+            Key.D5 or Key.NumPad5 => DashboardViewModel.TabStatus,
             _ => -1
         };
 

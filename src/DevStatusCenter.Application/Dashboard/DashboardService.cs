@@ -16,6 +16,7 @@ public sealed class DashboardService(
     {
         var now = timeProvider.GetUtcNow();
         var data = await store.ReadDashboardDataAsync(displayCurrency, now, cancellationToken);
+        var health = await store.ReadServiceHealthAsync(cancellationToken);
         var forecast = ForecastEngine.Calculate(data, now);
         var forecastByService = forecast.Lines.ToDictionary(x => x.ServiceId, StringComparer.Ordinal);
 
@@ -64,6 +65,7 @@ public sealed class DashboardService(
             data.UpcomingPayments,
             data.QuickAccess,
             data.ProviderStates,
+            health,
             data.LastSuccessfulSync,
             stale);
     }

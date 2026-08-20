@@ -94,3 +94,18 @@ public enum PaymentStatus
     Failed
 }
 
+
+/// <summary>
+/// Estado de salud de un servicio de terceros, normalizado desde la pagina de estado que publique
+/// cada proveedor. Es deliberadamente mas grueso que lo que ofrece Statuspage: lo que cambia una
+/// decision es "puedo trabajar o no", no el matiz exacto del incidente.
+/// </summary>
+public enum HealthIndicator
+{
+    Unknown = 0,
+    Operational = 1,
+    Maintenance = 2,
+    Degraded = 3,
+    PartialOutage = 4,
+    MajorOutage = 5
+}
