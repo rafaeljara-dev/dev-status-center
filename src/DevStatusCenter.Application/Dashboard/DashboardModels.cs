@@ -49,7 +49,9 @@ public sealed record DashboardServiceRow(
     DataSourceKind Source,
     DataAccuracy Accuracy,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<UsageSnapshot> Usage);
+    IReadOnlyList<UsageSnapshot> Usage,
+    /// <summary>Falso para los planes de tarifa plana: se muestra la cuota, nunca un importe.</summary>
+    bool TracksCost);
 
 public sealed record DashboardCategoryRow(
     ServiceCategory Category,

@@ -332,7 +332,11 @@ public sealed class DashboardViewModel : ObservableObject
 
             AiServices = Project(snapshot.Services.Where(x => x.Category == ServiceCategory.Ai));
             CloudServices = Project(snapshot.Services.Where(x => x.Category == ServiceCategory.Infrastructure));
-            TopSpend = Project(snapshot.Services.OrderByDescending(x => x.Current.Amount).Take(4));
+            // Los planes de tarifa plana no compiten por "mayor gasto": su cifra es una cuota.
+            TopSpend = Project(snapshot.Services
+                .Where(x => x.TracksCost)
+                .OrderByDescending(x => x.Current.Amount)
+                .Take(4));
 
             Payments = snapshot.UpcomingPayments
                 .Take(5)

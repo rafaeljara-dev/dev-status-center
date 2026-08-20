@@ -32,23 +32,46 @@ public sealed record ServiceRowViewModel(
     public static ServiceRowViewModel From(DashboardServiceRow row, CultureInfo culture, double share = 0d)
     {
         var quota = row.Usage.FirstOrDefault(x => x.Metric.Kind == MetricKind.QuotaConsumed);
-        var detail = quota is null
-            ? $"Projected {FormatMoney(row.Projected.Amount, row.Projected.Currency, culture)}"
-            : $"Quota {quota.Value:0.#}% · projected {FormatMoney(row.Projected.Amount, row.Projected.Currency, culture)}";
-        var clamped = Math.Clamp(share, 0d, 1d);
+        var percent = Math.Clamp(quota?.Value ?? 0m, 0m, 100m);
+
+        // Un plan de tarifa plana no ensena dinero: lo que se quiere saber de Claude Code o Codex
+        // es cuanto queda de la ventana, no cuanto cuesta la mensualidad, que ya se sabe.
+        var detail = !row.TracksCost
+            ? quota is null
+                ? "No quota reported yet"
+                : $"{100m - percent:0.#}% left"
+            : quota is null
+                ? $"Projected {FormatMoney(row.Projected.Amount, row.Projected.Currency, culture)}"
+                : $"Quota {percent:0.#}% · projected {FormatMoney(row.Projected.Amount, row.Projected.Currency, culture)}";
+        var clamped = Math.Clamp(row.TracksCost ? share : (double)percent / 100d, 0d, 1d);
         return new ServiceRowViewModel(
             row.Name,
-            FormatMoney(row.Current.Amount, row.Current.Currency, culture),
-            FormatAmount(row.Current.Amount, culture),
+            row.TracksCost ? FormatMoney(row.Current.Amount, row.Current.Currency, culture) : string.Empty,
+            row.TracksCost
+                ? FormatAmount(row.Current.Amount, culture)
+                : quota is null ? "—" : $"{percent:0}%",
             detail,
-            ConfidenceLabel(row.Source, row.Accuracy),
-            Math.Clamp(quota?.Value ?? 0m, 0m, 100m),
+            row.TracksCost ? ConfidenceLabel(row.Source, row.Accuracy) : QuotaLabel(row.Source, row.Accuracy),
+            percent,
             BrandGlyphs.For(row.ProviderId, row.ExternalId),
             new GridLength(clamped, GridUnitType.Star),
             new GridLength(1d - clamped, GridUnitType.Star),
             // La barra se apaga con el importe: el ojo ordena antes por intensidad que por largo.
             0.32d + (0.68d * clamped));
     }
+
+    /// <summary>
+    /// Para los planes, la etiqueta dice de donde sale la cuota. Codex la publica exacta; para
+    /// Claude Code la calculamos desde los transcripts, y llamar a eso "limite" seria inventar
+    /// una precision que no tenemos.
+    /// </summary>
+    private static string QuotaLabel(DataSourceKind source, DataAccuracy accuracy) => (source, accuracy) switch
+    {
+        (_, DataAccuracy.ProviderReported) => "✓ Provider quota",
+        (_, DataAccuracy.Calculated) => "≈ Computed from local logs",
+        (DataSourceKind.Mock, _) => "◇ Demo data",
+        _ => "≈ Estimated"
+    };
 
     private static string ConfidenceLabel(DataSourceKind source, DataAccuracy accuracy) => (source, accuracy) switch
     {

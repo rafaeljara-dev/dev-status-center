@@ -14,7 +14,15 @@ public enum CostBehavior
 {
     Variable,
     Fixed,
-    Mixed
+    Mixed,
+
+    /// <summary>
+    /// Plan de tarifa plana en el que lo que importa es la cuota consumida, no el dinero: Claude
+    /// Code y Codex. Estos servicios <b>no suman al gasto del mes ni al presupuesto</b>; mezclar
+    /// una mensualidad fija con el consumo variable de la nube hace que ninguna de las dos cifras
+    /// signifique nada.
+    /// </summary>
+    PlanQuota
 }
 
 public enum BillingCadence

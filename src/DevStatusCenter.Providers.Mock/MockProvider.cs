@@ -141,7 +141,10 @@ public sealed class MockProvider : IProvider, IUsageProvider, IBillingProvider, 
         DateTimeOffset capturedAt,
         BillingPeriod period)
     {
-        var service = Service(externalId, name, ServiceCategory.Ai);
+        // Los planes de IA se marcan como cuota: lo que interesa de ellos es cuanto queda de la
+        // ventana, no el importe. El de demostracion lo refleja para que la pestana se vea igual
+        // que se vera con los providers locales de Codex y Claude Code.
+        var service = Service(externalId, name, ServiceCategory.Ai, CostBehavior.PlanQuota);
         var metrics = new List<UsageSnapshot>
         {
             Usage(service.Id, "input-tokens", "Input", MetricKind.TokensInput, "tokens", inputTokens, capturedAt, period),
@@ -172,7 +175,7 @@ public sealed class MockProvider : IProvider, IUsageProvider, IBillingProvider, 
         DateTimeOffset capturedAt,
         BillingPeriod period)
     {
-        var service = Service(externalId, name, ServiceCategory.Infrastructure);
+        var service = Service(externalId, name, ServiceCategory.Infrastructure, CostBehavior.Variable);
         var metrics = rawMetrics
             .Select(metric => Usage(
                 service.Id,
@@ -205,7 +208,11 @@ public sealed class MockProvider : IProvider, IUsageProvider, IBillingProvider, 
                 DataSourceKind.Mock,
                 DataAccuracy.Estimated)]);
 
-    private static Service Service(string externalId, string name, ServiceCategory category) =>
+    private static Service Service(
+        string externalId,
+        string name,
+        ServiceCategory category,
+        CostBehavior behavior) =>
         new(
             $"{ProviderId}:{AccountId}:{externalId}",
             ProviderId,
@@ -213,7 +220,7 @@ public sealed class MockProvider : IProvider, IUsageProvider, IBillingProvider, 
             externalId,
             name,
             category,
-            CostBehavior.Variable);
+            behavior);
 
     private static UsageSnapshot Usage(
         string serviceId,

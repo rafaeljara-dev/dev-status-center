@@ -34,10 +34,15 @@ public sealed class DashboardService(
                 item.Source,
                 item.Accuracy,
                 item.CapturedAt,
-                item.LatestUsage);
+                item.LatestUsage,
+                item.Service.CostBehavior != CostBehavior.PlanQuota);
         }).ToArray();
 
-        var categories = services
+        // Los planes de tarifa plana quedan fuera de todo lo que sea dinero: totales, categorias
+        // y presupuesto. Su sitio es la pestana de IA, con su cuota.
+        var costed = services.Where(x => x.TracksCost).ToArray();
+
+        var categories = costed
             .GroupBy(x => x.Category)
             .Select(group => new DashboardCategoryRow(
                 group.Key,
@@ -46,7 +51,7 @@ public sealed class DashboardService(
             .OrderByDescending(x => x.Current.Amount)
             .ToArray();
 
-        var current = new Money(services.Sum(x => x.Current.Amount), displayCurrency);
+        var current = new Money(costed.Sum(x => x.Current.Amount), displayCurrency);
         var budget = data.Budgets.FirstOrDefault(x => x.ServiceId is null && x.Category is null)?.Limit;
         decimal? percent = budget is { Amount: > 0m }
             ? decimal.Round(current.Amount / budget.Value.Amount * 100m, 1)
