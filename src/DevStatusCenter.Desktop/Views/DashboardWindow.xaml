@@ -194,11 +194,19 @@
                   Padding="0,7,0,10"
                   Margin="0,0,0,-1"
                   BorderBrush="{Binding SelectedTab, Converter={StaticResource TabUnderline}, ConverterParameter=4}">
-            <TextBlock Text="STATUS"
-                       FontSize="15"
-                       FontWeight="Medium"
-                       HorizontalAlignment="Center"
-                       Foreground="{Binding SelectedTab, Converter={StaticResource TabForeground}, ConverterParameter=4}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+              <TextBlock Text="STATUS"
+                         FontSize="15"
+                         FontWeight="Medium"
+                         Foreground="{Binding SelectedTab, Converter={StaticResource TabForeground}, ConverterParameter=4}" />
+              <!-- Punto rojo: hay una caida que mirar. Avisa sin arrastrar la vista hasta aqui. -->
+              <Ellipse Width="6"
+                       Height="6"
+                       Margin="5,0,0,7"
+                       VerticalAlignment="Center"
+                       Fill="#F06464"
+                       Visibility="{Binding HasOutage, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
           </Border>
         </Button>
       </Grid>
@@ -425,36 +433,72 @@
         <!-- 4 · Estado de terceros -->
         <StackPanel Visibility="{Binding SelectedTab, Converter={StaticResource EqualityToVisibility}, ConverterParameter=4}">
           <TextBlock Text="THIRD-PARTY STATUS" Style="{StaticResource SectionLabel}" />
+          <!--
+            Dos columnas: seis servicios en fila unica ocupaban media pantalla para decir "todo
+            bien" seis veces. En rejilla el estado entero se lee sin desplazar.
+          -->
           <ItemsControl ItemsSource="{Binding Health}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Columns="2" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Button Style="{StaticResource FlatButton}"
                         Command="{Binding DataContext.OpenStatusPageCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
                         CommandParameter="{Binding}"
                         HorizontalContentAlignment="Stretch"
-                        Padding="0,9"
-                        ToolTip="{Binding Url}">
+                        Padding="10,9"
+                        Margin="0,0,6,6"
+                        ToolTip="{Binding Description}">
                   <Grid>
                     <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="22" />
+                      <ColumnDefinition Width="24" />
                       <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding Glyph}" FontSize="15" VerticalAlignment="Top" Margin="0,1,0,0">
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Path Data="{Binding Brand}"
+                          Fill="{StaticResource MutedTextBrush}"
+                          Width="17"
+                          Height="17"
+                          Stretch="Uniform"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding Name}"
+                               FontSize="15"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <!-- El glifo cambia de forma, no solo de color: legible sin distinguir tonos. -->
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding Glyph}"
+                               FontSize="14"
+                               Margin="6,0,0,0"
+                               VerticalAlignment="Center">
                       <TextBlock.Foreground>
                         <SolidColorBrush Color="{Binding Color}" />
                       </TextBlock.Foreground>
                     </TextBlock>
-                    <StackPanel Grid.Column="1">
-                      <TextBlock Text="{Binding Name}" FontSize="15" />
+
+                    <StackPanel Grid.Row="1"
+                                Grid.Column="1"
+                                Grid.ColumnSpan="2"
+                                Visibility="{Binding ShowDescription, Converter={StaticResource BooleanToVisibilityConverter}}">
                       <TextBlock Text="{Binding Description}"
                                  Foreground="{StaticResource MutedTextBrush}"
-                                 FontSize="13"
+                                 FontSize="12"
                                  Margin="0,3,0,0"
                                  TextWrapping="Wrap" />
                       <TextBlock Text="{Binding IncidentTitle}"
                                  Foreground="{StaticResource WarningBrush}"
                                  FontSize="12"
-                                 Margin="0,4,0,0"
+                                 Margin="0,3,0,0"
                                  TextWrapping="Wrap"
                                  Visibility="{Binding HasIncident, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     </StackPanel>

@@ -9,9 +9,18 @@ namespace DevStatusCenter.Application.Configuration;
 public sealed record ProviderOptions(
     bool Enabled,
     string? CredentialReference,
-    string? AccountId)
+    string? AccountId,
+    IReadOnlyList<string>? Services = null)
 {
     public static ProviderOptions Disabled { get; } = new(false, null, null);
+
+    /// <summary>
+    /// Subconjunto de servicios que el provider debe reportar. Vacio significa "todos", no
+    /// "ninguno": un provider real no la usa, y el de demostracion la necesita para rellenar
+    /// solo los huecos que ningun provider real cubre todavia.
+    /// </summary>
+    public IReadOnlyList<string> ServiceFilter { get; } =
+        Services is null ? [] : [.. Services.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim())];
 }
 
 /// <summary>

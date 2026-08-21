@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using DevStatusCenter.Application.Providers;
 using DevStatusCenter.Domain.Enums;
 using DevStatusCenter.Domain.Models;
@@ -5,10 +6,23 @@ using DevStatusCenter.Domain.ValueObjects;
 
 namespace DevStatusCenter.Providers.Mock;
 
+/// <summary>
+/// Datos de demostracion. Sirve para dos cosas: ver la aplicacion completa antes de conectar
+/// nada, y -- ya con providers reales -- rellenar los huecos de los que todavia no existen.
+///
+/// De ahi el filtro: con una lista de servicios solo se emiten esos, y ni suscripciones ni pagos,
+/// porque esos pertenecen a los servicios que se dejaron fuera. Sin lista se emite todo, que es
+/// el comportamiento de un primer arranque.
+/// </summary>
 public sealed class MockProvider : IProvider, IUsageProvider, IBillingProvider, IQuotaProvider
 {
     private const string ProviderId = "mock";
     private const string AccountId = "mock-personal";
+
+    private readonly FrozenSet<string> _services;
+
+    public MockProvider(IEnumerable<string>? services = null) =>
+        _services = (services ?? []).ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     public ProviderDescriptor Descriptor { get; } = new(
         ProviderId,
@@ -30,8 +44,8 @@ public sealed class MockProvider : IProvider, IUsageProvider, IBillingProvider, 
             context.RequestedAt,
             [Account()],
             observations,
-            BuildSubscriptions(context.RequestedAt),
-            BuildPayments(context.RequestedAt));
+            _services.Count == 0 ? BuildSubscriptions(context.RequestedAt) : [],
+            _services.Count == 0 ? BuildPayments(context.RequestedAt) : []);
     }
 
     public Task<IReadOnlyList<ServiceObservation>> GetUsageAsync(
@@ -75,7 +89,15 @@ public sealed class MockProvider : IProvider, IUsageProvider, IBillingProvider, 
         "demo-account",
         credentialReference: null);
 
-    private static IReadOnlyList<ServiceObservation> BuildObservations(ProviderRefreshContext context)
+    private IReadOnlyList<ServiceObservation> BuildObservations(ProviderRefreshContext context)
+    {
+        var all = BuildAllObservations(context);
+        return _services.Count == 0
+            ? all
+            : [.. all.Where(x => _services.Contains(x.Service.ExternalId))];
+    }
+
+    private static IReadOnlyList<ServiceObservation> BuildAllObservations(ProviderRefreshContext context)
     {
         var period = CurrentMonth(context.RequestedAt);
         var elapsedDays = Math.Max(1d, (context.RequestedAt - period.StartsAt).TotalDays);

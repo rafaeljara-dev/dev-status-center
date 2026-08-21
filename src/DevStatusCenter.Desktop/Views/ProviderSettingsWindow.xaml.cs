@@ -183,7 +183,11 @@ public partial class ProviderSettingsWindow : Window
         _options = _options.WithProvider(_selected.Id, new ProviderOptions(
             EnabledBox.IsChecked == true,
             NullIfBlank(ReferenceBox.Text),
-            NullIfBlank(AccountBox.Text)));
+            NullIfBlank(AccountBox.Text),
+
+            // La ventana no edita el filtro de servicios; se arrastra tal cual para que guardar
+            // una credencial no borre en silencio lo que hay en el archivo.
+            _options.For(_selected.Id).ServiceFilter));
     }
 
     private void Persist()

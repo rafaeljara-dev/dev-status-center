@@ -110,6 +110,61 @@
       </Setter>
     </Style>
 
+    <!--
+      Campos de entrada. WPF los pinta con su tema claro por defecto, y como el estilo implicito
+      de TextBlock de arriba fuerza texto casi blanco, todo lo que se dibuja con un TextBlock
+      dentro de una plantilla ajena (los elementos de un ComboBox, los de un ListBox) salia
+      blanco sobre blanco: invisible. Por eso las superficies de entrada se declaran aqui en vez
+      de dejarlas al tema del sistema.
+    -->
+    <Style TargetType="TextBox">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CaretBrush" Value="{StaticResource TextBrush}" />
+      <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style TargetType="ComboBox">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="8,6" />
+    </Style>
+
+    <Style TargetType="ListBox">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+    </Style>
+
+    <Style TargetType="ListBoxItem">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="Padding" Value="8,6" />
+    </Style>
+
+    <!--
+      Las plantillas de fabrica de WPF resuelven el fondo de los desplegables y la seleccion por
+      DynamicResource contra SystemColors, no contra el control. Redefinir esas claves aqui es lo
+      unico que alcanza al popup del ComboBox sin reescribir su plantilla entera.
+    -->
+    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#191F2A" />
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#191F2A" />
+    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#F5F7FA" />
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#F5F7FA" />
+    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#2A3646" />
+    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#F5F7FA" />
+
     <!-- Pestanas y filas: sin fondo, solo el subrayado o el realce al pasar por encima. -->
     <Style x:Key="FlatButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
       <Setter Property="Background" Value="Transparent" />

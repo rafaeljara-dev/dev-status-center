@@ -423,7 +423,9 @@ public partial class App : System.Windows.Application, IDisposable
 
         if (options.IsEnabled("mock"))
         {
-            providers.Add(new MockProvider());
+            // El filtro decide que servicios de demostracion se emiten. Con providers reales ya
+            // conectados sirve para rellenar solo lo que ninguno cubre, sin duplicar una fila.
+            providers.Add(new MockProvider(options.For("mock").ServiceFilter));
         }
 
         if (await HasCredentialAsync(options, secrets, NeonProvider.ProviderId))

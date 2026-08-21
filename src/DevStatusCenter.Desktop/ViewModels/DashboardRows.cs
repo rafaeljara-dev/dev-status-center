@@ -125,9 +125,16 @@ public sealed record HealthRowViewModel(
     string Glyph,
     string Color,
     string Url,
-    bool IsDisrupted)
+    bool IsDisrupted,
+    Geometry? Brand)
 {
     public bool HasIncident => !string.IsNullOrWhiteSpace(IncidentTitle);
+
+    /// <summary>
+    /// La descripcion solo se muestra cuando aporta algo. "All Systems Operational" repetido en
+    /// seis fichas es ruido; el punto verde ya lo dice.
+    /// </summary>
+    public bool ShowDescription => IsDisrupted || HasIncident;
 
     public static HealthRowViewModel From(ServiceHealth health)
     {
@@ -152,7 +159,8 @@ public sealed record HealthRowViewModel(
             glyph,
             color,
             health.IncidentUrl ?? health.StatusPageUrl,
-            health.IsDisrupted);
+            health.IsDisrupted,
+            BrandGlyphs.For(health.Key, null));
     }
 }
 

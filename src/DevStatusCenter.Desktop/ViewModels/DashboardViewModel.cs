@@ -47,6 +47,7 @@ public sealed class DashboardViewModel : ObservableObject
     private IReadOnlyList<PaymentRowViewModel> _payments = [];
     private IReadOnlyList<QuickAccessRowViewModel> _quickAccess = [];
     private IReadOnlyList<HealthRowViewModel> _health = [];
+    private bool _hasOutage;
     private MeterBlockViewModel[] _budgetMeter = BuildMeter(0m, 0m, "#62D99C");
     private PaymentRowViewModel? _nextPayment;
     private string _currentAmount = "0.00";
@@ -145,6 +146,16 @@ public sealed class DashboardViewModel : ObservableObject
     {
         get => _health;
         private set => SetProperty(ref _health, value);
+    }
+
+    /// <summary>
+    /// Hay algo de terceros roto ahora mismo. Enciende el punto junto a la pestana STATUS: es el
+    /// aviso que sustituyo al salto automatico a esa pestana, que tapaba la portada a diario.
+    /// </summary>
+    public bool HasOutage
+    {
+        get => _hasOutage;
+        private set => SetProperty(ref _hasOutage, value);
     }
 
     public IReadOnlyList<MeterBlockViewModel> BudgetMeter => _budgetMeter;
@@ -370,6 +381,7 @@ public sealed class DashboardViewModel : ObservableObject
             // Una caida de terceros gana al resto en la linea de estado: es lo unico de aqui que
             // te impide trabajar ahora mismo, y no depende de nada que tu puedas arreglar.
             var down = snapshot.Health.Count(x => x.IsDisrupted);
+            HasOutage = down > 0;
             var failing = snapshot.ProviderStates.Count(x => x.ConsecutiveFailures > 0);
             AlertBadge = down > 0
                 ? $"{down} SERVICE{(down == 1 ? string.Empty : "S")} DOWN"
@@ -415,13 +427,9 @@ public sealed class DashboardViewModel : ObservableObject
     /// </summary>
     private void FocusAlertTab(DashboardSnapshot snapshot)
     {
-        // Un servicio caido pesa mas que una cuota alta: la cuota es tuya y puede esperar, la
-        // caida no depende de ti y cambia lo que puedes hacer en el minuto siguiente.
-        if (snapshot.Health.Any(x => x.IsDisrupted))
-        {
-            SelectedTab = TabStatus;
-            return;
-        }
+        // Una caida ya NO roba la pestana. Cloudflare publica incidencias menores casi a diario y
+        // el popup abria siempre en STATUS, tapando la portada. El aviso se da con el punto rojo
+        // junto a la pestana (HasOutage); ir a mirarla es decision de quien abre.
 
         var alarming = snapshot.Services.FirstOrDefault(service => service.Usage
             .Any(usage => usage.Metric.Kind == MetricKind.QuotaConsumed && usage.Value >= 85m));

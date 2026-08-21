@@ -42,6 +42,13 @@ internal sealed class ProviderOptionsFile
     public string? CredentialReference { get; set; }
 
     public string? AccountId { get; set; }
+
+    [SuppressMessage(
+        "Usage",
+        "CA2227:Collection properties should be read only",
+        Justification = "DTO de deserialización: System.Text.Json necesita poder asignar la lista.")]
+    /// <summary>Servicios que el provider debe reportar. Nulo o vacio = todos los que sepa.</summary>
+    public List<string>? Services { get; set; }
 }
 
 /// <summary>
@@ -121,7 +128,8 @@ public static class AppOptionsStore
                 {
                     Enabled = x.Value.Enabled,
                     CredentialReference = x.Value.CredentialReference,
-                    AccountId = x.Value.AccountId
+                    AccountId = x.Value.AccountId,
+                    Services = x.Value.ServiceFilter.Count == 0 ? null : [.. x.Value.ServiceFilter]
                 },
                 StringComparer.OrdinalIgnoreCase)
         };
@@ -160,7 +168,8 @@ public static class AppOptionsStore
                 {
                     Enabled = x.Value.Enabled,
                     CredentialReference = x.Value.CredentialReference,
-                    AccountId = x.Value.AccountId
+                    AccountId = x.Value.AccountId,
+                    Services = x.Value.ServiceFilter.Count == 0 ? null : [.. x.Value.ServiceFilter]
                 },
                 StringComparer.OrdinalIgnoreCase)
         };
@@ -198,7 +207,8 @@ public static class AppOptionsStore
                 new ProviderOptions(
                     entry.Value.Enabled,
                     NullIfBlank(entry.Value.CredentialReference),
-                    NullIfBlank(entry.Value.AccountId))));
+                    NullIfBlank(entry.Value.AccountId),
+                    entry.Value.Services)));
 
         return AppOptions.Create(
             localRoot,

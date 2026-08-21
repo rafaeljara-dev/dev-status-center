@@ -111,6 +111,24 @@ public sealed class HealthMonitor(HttpClient httpClient, TimeProvider timeProvid
         };
 
         var incident = summary.Incidents is { Count: > 0 } list ? list[0] : null;
+
+        // "minor" sin ningun incidente abierto no es una degradacion: es el agregado de los
+        // componentes. Cloudflare tiene cientos de datacenters y casi siempre hay alguno
+        // re-enrutado, asi que su indicador global practicamente nunca esta en "none" y la ficha
+        // se quedaba en amarillo permanente mientras todo funcionaba. Un amarillo que no se apaga
+        // nunca ensena a ignorar el amarillo, que es justo lo que no puede pasar aqui.
+        // summary.json solo lista incidentes sin resolver: si esta vacio, no esta pasando nada.
+        if (indicator == HealthIndicator.Degraded && incident is null)
+        {
+            return new ServiceHealth(
+                target.Key,
+                target.DisplayName,
+                HealthIndicator.Operational,
+                "No open incidents",
+                target.PageUrl,
+                now);
+        }
+
         return new ServiceHealth(
             target.Key,
             target.DisplayName,
